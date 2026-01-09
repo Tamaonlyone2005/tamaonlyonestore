@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, PointHistory, Order, VipLevel, Product, OrderStatus, ActivityLog } from '../types';
 import { StorageService } from '../services/storageService';
 import { AuthService } from '../services/authService';
 import { useNavigate } from 'react-router-dom';
-import { Save, Lock, User as UserIcon, Shield, Coins, Eye, EyeOff, Share2, BadgeCheck, Crown, MessageSquare, Download, Upload, Receipt, Heart, MessageCircle, Users, Activity, Image as ImageIcon, Loader2, Store } from 'lucide-react';
+import { Save, Lock, User as UserIcon, Shield, Coins, Eye, EyeOff, Share2, BadgeCheck, Crown, Download, Upload, Receipt, Heart, Activity, Image as ImageIcon, Loader2, Store, Trash2, Users } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import UserAvatar from '../components/UserAvatar';
 import ProductCard from '../components/ProductCard';
@@ -34,26 +33,21 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       return;
     }
     const loadData = async () => {
-        // Refresh User Data
         const u = await StorageService.findUser(user.id);
         const freshUser = u || user;
         setCurrentUser(freshUser);
         
-        // Point History
         const ph = await StorageService.getPointHistory(user.id);
         setPointHistory(ph);
         
-        // Orders
         const allOrders = await StorageService.getOrders();
         setMyOrders(allOrders.filter(o => o.userId === user.id).reverse());
         
-        // Wishlist
         const allProds = await StorageService.getProducts();
         if(freshUser.wishlist) {
             setWishlistItems(allProds.filter(p => freshUser.wishlist.includes(p.id)));
         }
 
-        // Activity Logs
         const logs = await StorageService.getLogs();
         setMyLogs(logs.filter(l => l.userId === user.id));
     };
@@ -77,7 +71,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
       setIsUploadingBanner(true);
       try {
-          // Compress to max 500KB
           const compressed = await StorageService.compressImage(file, 500);
           const updatedUser = { ...currentUser, banner: compressed };
           await StorageService.saveUser(updatedUser);
@@ -90,12 +83,21 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       }
   };
 
+  const handleDeleteBanner = async () => {
+      if(!currentUser) return;
+      if(confirm("Hapus banner profil?")) {
+          const updatedUser = { ...currentUser, banner: '' }; // Remove Banner
+          await StorageService.saveUser(updatedUser);
+          setCurrentUser(updatedUser);
+          addToast("Banner dihapus.", "info");
+      }
+  };
+
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>, orderId: string) => {
       const file = e.target.files?.[0];
       if (file) {
-          // Compress Payment Proof too
           try {
-              const base64 = await StorageService.compressImage(file, 1024); // 1MB max for proofs
+              const base64 = await StorageService.compressImage(file, 1024);
               await StorageService.uploadPaymentProof(orderId, base64);
               addToast("Bukti pembayaran berhasil diupload!", "success");
               setMyOrders(prev => prev.map(o => o.id === orderId ? {...o, paymentProof: base64} : o));
@@ -110,17 +112,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       addToast("Link profil disalin!", "info"); 
   };
   
-  const handleWhatsAppConfirm = (order: Order) => { 
-      window.open(`https://wa.me/6281234567890?text=${encodeURIComponent(`Halo Admin, saya mau konfirmasi pesanan #${order.id} (${order.productName})`)}`, '_blank'); 
-  };
-
   if (!currentUser) return null;
-
   const isAdmin = currentUser.role === UserRole.ADMIN;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 mb-20">
-      {/* Profile Card Container */}
       <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden shadow-2xl animate-fade-in relative group/banner">
         
         {/* Banner Section */}
@@ -131,13 +127,16 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                <div className="absolute inset-0 bg-black/40"></div>
            )}
            
-           {/* Banner Upload Button */}
-           <div className="absolute top-4 left-4 z-30 opacity-0 group-hover/banner:opacity-100 transition-opacity">
+           {/* Banner Controls */}
+           <div className="absolute top-4 left-4 z-30 opacity-0 group-hover/banner:opacity-100 transition-opacity flex gap-2">
                <label className="cursor-pointer bg-black/50 hover:bg-black/70 text-white px-3 py-2 rounded-xl flex items-center gap-2 text-xs font-bold backdrop-blur-md border border-white/10">
                    {isUploadingBanner ? <Loader2 size={16} className="animate-spin"/> : <ImageIcon size={16}/>}
-                   Ganti Banner
+                   Ganti
                    <input type="file" className="hidden" accept="image/*" onChange={handleBannerUpload} disabled={isUploadingBanner}/>
                </label>
+               {currentUser.banner && (
+                   <button onClick={handleDeleteBanner} className="bg-red-500/50 hover:bg-red-500/70 text-white p-2 rounded-xl backdrop-blur-md border border-white/10"><Trash2 size={16}/></button>
+               )}
            </div>
 
            <button onClick={handleShareProfile} className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-colors z-20 border border-white/10"><Share2 size={18}/></button>
@@ -156,24 +155,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       {currentUser.isVerified && <BadgeCheck size={22} className="text-white fill-green-500 drop-shadow-sm" />}
                       {isAdmin && <Shield size={22} className="text-red-500 fill-current drop-shadow-sm" />}
                    </div>
-                   
-                   {!isAdmin && (
-                       <div className="flex items-center gap-6 mt-4 text-sm justify-center">
-                           <div className="text-center bg-black/30 px-3 py-1 rounded-lg backdrop-blur-sm">
-                               <span className="block font-bold text-white text-lg">{currentUser.followers?.length || 0}</span>
-                               <span className="text-gray-300 text-xs uppercase tracking-wide">Followers</span>
-                           </div>
-                           <div className="text-center bg-black/30 px-3 py-1 rounded-lg backdrop-blur-sm">
-                               <span className="block font-bold text-white text-lg">{currentUser.following?.length || 0}</span>
-                               <span className="text-gray-300 text-xs uppercase tracking-wide">Following</span>
-                           </div>
-                       </div>
-                   )}
+                   {/* SHOW 6-DIGIT UID */}
+                   <p className="text-gray-400 text-xs font-mono bg-black/30 px-2 py-1 rounded mt-1 inline-block">UID: {currentUser.shortId || 'N/A'}</p>
                </div>
            </div>
         </div>
 
-        {/* Member Action Bar (Points Only) */}
         {!isAdmin && (
             <div className="bg-dark-card border-b border-white/5 py-6 px-4">
                 <div className="max-w-md mx-auto">
@@ -184,9 +171,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">T Points</p>
                                 <p className="text-2xl font-bold text-white">{currentUser.points.toLocaleString()}</p>
                             </div>
-                        </div>
-                        <div className="text-right">
-                             <span className="text-[10px] bg-white/5 px-2 py-1 rounded text-gray-400">Exclusive Currency</span>
                         </div>
                     </div>
                 </div>
@@ -207,22 +191,17 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 <div className="bg-dark-card border border-white/5 rounded-2xl p-6">
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2"><UserIcon size={16} /> Account Details</h3>
                   <div className="space-y-4">
-                     {currentUser.vipLevel !== VipLevel.NONE && (
-                         <div className="p-3 rounded-lg border flex items-center justify-between bg-white/5 border-white/10"><span className="text-xs font-bold uppercase text-gray-400">Current Rank</span><span className="font-bold text-yellow-500">{currentUser.vipLevel}</span></div>
-                     )}
                     <div><label className="text-xs text-gray-500 block mb-1">Display Name</label><div className="text-white font-medium bg-dark-bg p-3 rounded-lg border border-white/10">{currentUser.username}</div></div>
                     <div><label className="text-xs text-gray-500 block mb-1">Email</label><div className="text-gray-300 font-medium bg-dark-bg p-3 rounded-lg border border-white/10">{currentUser.email}</div></div>
                     
                     {!isAdmin && (
                         <>
-                            {/* Tombol Buka Toko jika belum seller */}
                             {!currentUser.isSeller && (
                                 <button onClick={() => navigate('/open-store')} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl font-bold transition-all mt-4 hover:shadow-lg hover:scale-[1.02]">
                                     <Store size={18} /> Buka Toko Gratis
                                 </button>
                             )}
                             
-                            {/* Tombol Ke Dashboard Toko jika sudah seller */}
                             {currentUser.isSeller && (
                                 <button onClick={() => navigate('/open-store')} className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white py-3 rounded-xl font-bold transition-all mt-4 hover:bg-brand-500 border border-brand-400/20">
                                     <Store size={18} /> Dashboard Toko Saya
@@ -244,7 +223,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 </div>
               </div>
             )}
-
+            
+            {/* ... Other Tabs remain same ... */}
             {activeTab === 'orders' && (
                 <div className="space-y-4 animate-fade-in">
                     {myOrders.length === 0 ? (
@@ -276,13 +256,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                      </div>
                                      <div className="space-y-2">
                                          {order.status === OrderStatus.PENDING && (
-                                             <>
-                                                 <button onClick={() => handleWhatsAppConfirm(order)} className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2"><MessageCircle size={16}/> Konfirmasi WA</button>
-                                                 <div className="relative group w-full">
-                                                     <button className="w-full bg-white/5 hover:bg-white/10 text-gray-300 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 border border-white/10"><Upload size={16}/> {order.paymentProof ? 'Bukti Terkirim' : 'Upload Bukti Bayar'}</button>
-                                                     <input type="file" onChange={(e) => handleUploadProof(e, order.id)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
-                                                 </div>
-                                             </>
+                                             <div className="relative group w-full">
+                                                 <button className="w-full bg-white/5 hover:bg-white/10 text-gray-300 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 border border-white/10"><Upload size={16}/> {order.paymentProof ? 'Bukti Terkirim' : 'Upload Bukti Bayar'}</button>
+                                                 <input type="file" onChange={(e) => handleUploadProof(e, order.id)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
+                                             </div>
                                          )}
                                          {order.downloadUrl && order.status === OrderStatus.COMPLETED && (
                                               <a href={order.downloadUrl} target="_blank" className="block w-full text-center bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-bold text-sm"><Download size={16} className="inline mr-2"/> Download Item</a>
@@ -348,14 +325,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                      )}
                 </div>
             )}
-
         </div>
       </div>
     </div>
   );
 };
 
-// Icons helpers
 const PlusIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
 const MinusIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>;
 

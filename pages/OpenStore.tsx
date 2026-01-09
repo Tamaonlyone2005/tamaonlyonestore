@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { User, Product, ProductType, StoreStatus, UserRole } from '../types';
+import { User, Product, ProductType, StoreStatus, UserRole, STORE_LEVELS } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Store, Loader2, CheckCircle, Package, ArrowRight, Wallet, ShoppingBag, Plus, Upload, Trash2, AlertTriangle } from 'lucide-react';
+import { Store, Loader2, CheckCircle, Package, ArrowRight, Plus, Upload, Trash2, AlertTriangle, Zap } from 'lucide-react';
 import { useToast } from '../components/Toast';
 
 const OpenStore: React.FC = () => {
@@ -86,7 +86,17 @@ const OpenStore: React.FC = () => {
     };
 
     const handleAddProduct = async () => {
-        if(!user) return;
+        if(!user || !user.isSeller) return;
+        
+        // CHECK STORE LEVEL LIMIT
+        const currentLevel = user.storeLevel || 1;
+        const levelConfig = STORE_LEVELS.find(l => l.level === currentLevel);
+        const maxProducts = levelConfig ? levelConfig.maxProducts : 5;
+
+        if (myProducts.length >= maxProducts) {
+            return addToast(`Limit produk tercapai untuk Level ${currentLevel}. Tingkatkan penjualan untuk naik level!`, "error");
+        }
+
         if (!newProduct.name || !newProduct.price) return addToast("Nama dan Harga wajib diisi", "error");
         
         const product: Product = {
@@ -99,7 +109,8 @@ const OpenStore: React.FC = () => {
             image: newProduct.image,
             type: newProduct.type || 'ITEM',
             sellerId: user.id, // VITAL: Mark as seller product
-            sellerName: user.storeName
+            sellerName: user.storeName,
+            sellerLevel: currentLevel
         };
 
         await StorageService.saveProduct(product);
@@ -121,6 +132,10 @@ const OpenStore: React.FC = () => {
 
     // IF ALREADY SELLER -> SHOW DASHBOARD
     if (user?.isSeller) {
+        const levelConfig = STORE_LEVELS.find(l => l.level === (user.storeLevel || 1));
+        const maxProds = levelConfig ? levelConfig.maxProducts : 5;
+        const nextLevel = STORE_LEVELS.find(l => l.level === (user.storeLevel || 1) + 1);
+
         if (user.storeStatus === StoreStatus.SUSPENDED) {
             return (
                 <div className="max-w-4xl mx-auto px-4 py-20 text-center">
@@ -137,7 +152,7 @@ const OpenStore: React.FC = () => {
             <div className="max-w-6xl mx-auto px-4 py-8 pb-32">
                 <div className="bg-gradient-to-r from-brand-900 to-blue-900 rounded-3xl p-8 mb-8 text-white relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                    <div className="relative z-10 flex justify-between items-start">
+                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
                                 <Store size={32} className="text-brand-300"/>
@@ -146,7 +161,17 @@ const OpenStore: React.FC = () => {
                             </div>
                             <p className="text-gray-200 max-w-xl">{user.storeDescription || "Kelola produk dan pesananmu di sini."}</p>
                         </div>
-                        <button onClick={() => navigate(`/u/${user.id}`)} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm font-bold border border-white/10">Lihat Halaman Toko</button>
+                        
+                        <div className="bg-white/10 p-4 rounded-2xl border border-white/10 w-full md:w-auto min-w-[200px]">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-bold text-yellow-400 flex items-center gap-1"><Zap size={14}/> Level {user.storeLevel || 1}</span>
+                                <span className="text-xs text-gray-300">{user.storeExp || 0} / {nextLevel?.expRequired || 'MAX'} EXP</span>
+                            </div>
+                            <div className="w-full h-2 bg-black/30 rounded-full overflow-hidden">
+                                <div className="h-full bg-yellow-500 transition-all" style={{ width: `${Math.min(100, ((user.storeExp || 0) / (nextLevel?.expRequired || 100)) * 100)}%` }}></div>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-2 text-center">Slot Produk: {myProducts.length} / {maxProds}</p>
+                        </div>
                     </div>
                 </div>
 

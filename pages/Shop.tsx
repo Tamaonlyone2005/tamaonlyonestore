@@ -2,9 +2,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
-import { Product, User, CartItem, ProductVariant } from '../types';
+import { Product, User, CartItem, ProductVariant, Report } from '../types';
 import { useToast } from '../components/Toast';
-import { ShoppingCart, ArrowRight, Info, Search, Filter, ArrowUpDown, Clock, Zap } from 'lucide-react';
+import { ShoppingCart, ArrowRight, Info, Search, Filter, ArrowUpDown, Clock, Zap, Flag, Share2 } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
 import ReviewSection from '../components/ReviewSection';
 
@@ -32,19 +32,19 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
   
   const [inputFields, setInputFields] = useState<{[key:string]: string}>({});
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
         setLoading(true);
-        // HANYA AMBIL PRODUK GLOBAL (ADMIN)
+        // getGlobalProducts sudah dimodifikasi di storageService untuk mengurutkan Admin Products first
         const allProducts = await StorageService.getGlobalProducts();
         setProducts(allProducts);
         
         if (productId) {
-            // Jika ID produk ada di URL, coba cari di global. Jika tidak ada, mungkin produk seller (cari manual)
             let found = allProducts.find(p => p.id === productId);
             if (!found) {
-               // Fallback: Cari di semua produk jika link dishare direct
                const reallyAll = await StorageService.getProducts();
                found = reallyAll.find(p => p.id === productId);
             }
@@ -63,22 +63,21 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
   const filteredProducts = useMemo(() => {
       let res = [...products];
 
-      // Search
       if (searchTerm) {
           res = res.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
       }
 
-      // Category
       if (selectedCategory !== 'ALL') {
           if (selectedCategory === 'ITEM') res = res.filter(p => p.type === 'ITEM' || p.type === 'SKIN');
           else if (selectedCategory === 'SERVICES') res = res.filter(p => p.type === 'JOKI' || p.type === 'REKBER');
           else if (selectedCategory === 'OTHER') res = res.filter(p => !['ITEM', 'SKIN', 'JOKI', 'REKBER'].includes(p.type));
       }
 
-      // Sort
+      // Sort hanya di dalam grup (Admin vs Member). Tapi karena kita ingin mempertahankan urutan Admin > Member, sorting harga mungkin sedikit merusak "grup". 
+      // Solusi: Sorting tetap berlaku global untuk hasil pencarian user.
       if (sortOrder === 'LOW_HIGH') res.sort((a,b) => a.price - b.price);
       else if (sortOrder === 'HIGH_LOW') res.sort((a,b) => b.price - a.price);
-      else res.sort((a,b) => Number(b.id) - Number(a.id)); // Newest based on ID timestamp
+      else res.sort((a,b) => Number(b.id) - Number(a.id)); 
 
       return res;
   }, [products, searchTerm, selectedCategory, sortOrder]);
@@ -113,6 +112,26 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
        navigate('/cart');
   };
 
+  const handleSubmitReport = async () => {
+      if(!user || !activeProduct) return;
+      if(!reportReason) return addToast("Alasan harus diisi", "error");
+
+      const report: Report = {
+          id: Date.now().toString(),
+          reporterId: user.id,
+          targetId: activeProduct.id,
+          targetType: 'PRODUCT',
+          reason: reportReason,
+          description: `Reported product: ${activeProduct.name}`,
+          status: 'PENDING',
+          createdAt: new Date().toISOString()
+      };
+      await StorageService.createReport(report);
+      addToast("Laporan terkirim. Admin akan meninjau.", "success");
+      setShowReportModal(false);
+      setReportReason('');
+  };
+
   // If viewing details
   if (activeProduct) {
      if (!activeProduct) return <div className="max-w-7xl mx-auto px-4 py-8"><ProductSkeleton/></div>;
@@ -123,8 +142,8 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                <ArrowRight className="rotate-180" size={16}/> Kembali ke Katalog
            </button>
 
-           {/* 1. COMPACT HEADER (Image + Title + Price) */}
-           <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl mb-6 animate-fade-in">
+           {/* 1. COMPACT HEADER */}
+           <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl mb-6 animate-fade-in relative">
                <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
                     <div className="flex-shrink-0 w-24 h-24 md:w-40 md:h-40 bg-gray-800 rounded-xl overflow-hidden border border-white/10 shadow-lg relative group">
                          <img src={activeProduct.image || "https://picsum.photos/500"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
@@ -133,9 +152,10 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                     <div className="flex-1 text-center md:text-left">
                          <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-2">
                              <span className="px-2 py-0.5 rounded text-[10px] bg-brand-600 text-white font-bold uppercase tracking-wider">{activeProduct.type}</span>
-                             <span className="px-2 py-0.5 rounded text-[10px] bg-white/10 text-gray-300 font-bold uppercase tracking-wider">{activeProduct.category || 'General'}</span>
-                             {activeProduct.sellerName && (
-                                 <span className="px-2 py-0.5 rounded text-[10px] bg-purple-600/20 text-purple-300 font-bold uppercase tracking-wider border border-purple-500/20">Seller: {activeProduct.sellerName}</span>
+                             {activeProduct.sellerName ? (
+                                 <span className="px-2 py-0.5 rounded text-[10px] bg-purple-600/20 text-purple-300 font-bold uppercase tracking-wider border border-purple-500/20 flex items-center gap-1">Seller: {activeProduct.sellerName} {activeProduct.isVerifiedStore && '✅'}</span>
+                             ) : (
+                                 <span className="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-bold uppercase tracking-wider border border-blue-500/20">OFFICIAL</span>
                              )}
                          </div>
                          <h1 className="text-xl md:text-2xl font-bold text-white mb-2 leading-tight">{activeProduct.name}</h1>
@@ -143,11 +163,17 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                              Rp {(selectedVariant ? selectedVariant.price : activeProduct.price).toLocaleString()}
                          </div>
                          
-                         {/* FEATURE 47: ESTIMATED PROCESS TIME */}
                          <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-lg border border-green-500/20 text-xs font-bold">
                              <Clock size={14}/> Rata-rata proses: 5-10 Menit (Otomatis)
                          </div>
                     </div>
+               </div>
+               
+               {/* REPORT & SHARE BUTTONS */}
+               <div className="absolute top-4 right-4 flex gap-2">
+                   <button onClick={() => setShowReportModal(true)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors" title="Laporkan Produk">
+                       <Flag size={18}/>
+                   </button>
                </div>
            </div>
 
@@ -218,6 +244,26 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                     <ReviewSection productId={activeProduct.id} currentUser={user} />
                 </div>
            </div>
+
+           {/* REPORT MODAL */}
+           {showReportModal && (
+               <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+                   <div className="bg-[#1e293b] w-full max-w-sm rounded-2xl p-6 border border-white/10 animate-slide-up">
+                       <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Flag size={18} className="text-red-500"/> Laporkan Produk</h3>
+                       <textarea 
+                           className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white mb-4" 
+                           rows={4}
+                           placeholder="Jelaskan alasan pelaporan (Penipuan, Produk Ilegal, dll)"
+                           value={reportReason}
+                           onChange={e => setReportReason(e.target.value)}
+                       />
+                       <div className="flex gap-2">
+                           <button onClick={() => setShowReportModal(false)} className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold">Batal</button>
+                           <button onClick={handleSubmitReport} className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold">Kirim Laporan</button>
+                       </div>
+                   </div>
+               </div>
+           )}
 
            {/* FEATURE 46: STICKY ADD TO CART (MOBILE ONLY) */}
            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1e293b]/95 backdrop-blur-lg border-t border-white/10 p-4 z-50 flex items-center gap-3 animate-slide-up">
@@ -300,14 +346,14 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                                   <p className="text-white text-xs font-bold truncate">{p.name}</p>
                                   <p className="text-brand-300 text-xs font-bold">Rp {p.price.toLocaleString()}</p>
                               </div>
-                              {/* Type Badge */}
                               <div className="absolute top-2 right-2 bg-black/50 px-2 py-0.5 rounded text-[10px] text-white backdrop-blur-md">
                                   {p.type}
                               </div>
-                              {/* Fast Process Badge */}
-                              <div className="absolute top-2 left-2 bg-green-600 px-1.5 py-0.5 rounded text-[9px] text-white font-bold flex items-center gap-1 shadow-lg">
-                                  <Zap size={10} fill="currentColor"/> FAST
-                              </div>
+                              {p.sellerName && (
+                                  <div className="absolute top-2 left-2 bg-purple-600 px-1.5 py-0.5 rounded text-[9px] text-white font-bold flex items-center gap-1 shadow-lg">
+                                      SELLER
+                                  </div>
+                              )}
                           </div>
                       </div>
                   ))}

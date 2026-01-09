@@ -1,8 +1,13 @@
 
-import { User, UserRole, AuthResponse, VipLevel } from '../types';
+import { User, UserRole, AuthResponse, VipLevel, StoreStatus } from '../types';
 import { StorageService } from './storageService';
 import { auth, googleProvider } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signOut, sendPasswordResetEmail } from "firebase/auth";
+
+// Helper untuk generate UID 6 angka
+const generateShortId = (): string => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
 export const AuthService = {
   
@@ -10,16 +15,16 @@ export const AuthService = {
     try {
       if (!auth) throw new Error("Authentication service unavailable");
       
-      // LOGIN MELALUI FIREBASE (Aman)
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
 
       let userData = await StorageService.findUser(firebaseUser.uid);
 
-      // JIKA USER BELUM ADA DI DATABASE LOKAL
       if (!userData) {
+          // Fallback creation for legacy users without DB entry
           userData = {
               id: firebaseUser.uid,
+              shortId: generateShortId(), // Assign new shortID
               username: firebaseUser.displayName || email.split('@')[0],
               email: email,
               role: UserRole.MEMBER,
@@ -39,13 +44,18 @@ export const AuthService = {
           await StorageService.saveUser(userData);
       }
 
-      // SECURITY CHECK: BANNED USER
+      // Ensure ShortID exists for old users
+      if (!userData.shortId) {
+          userData.shortId = generateShortId();
+          await StorageService.saveUser(userData);
+      }
+
       if (userData.isBanned) {
           await signOut(auth);
           return { success: false, message: 'Akun ditangguhkan. Hubungi support.' };
       }
 
-      // AUTO-PROMOTE OWNER (Email Baru: aldipranatapratama2005@gmail.com)
+      // AUTO-PROMOTE OWNER
       if (userData.email === 'aldipranatapratama2005@gmail.com') {
           userData.role = UserRole.ADMIN;
           userData.isVip = true;
@@ -78,6 +88,7 @@ export const AuthService = {
 
         const newUser: User = {
           id: firebaseUser.uid,
+          shortId: generateShortId(), // GENERATE 6 DIGIT UID
           username: username,
           email: email,
           role: UserRole.MEMBER,
@@ -117,6 +128,7 @@ export const AuthService = {
           if (!userData) {
               userData = {
                   id: firebaseUser.uid,
+                  shortId: generateShortId(),
                   username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
                   email: firebaseUser.email || '',
                   role: UserRole.MEMBER,
@@ -135,10 +147,14 @@ export const AuthService = {
               };
               await StorageService.saveUser(userData);
           }
+          
+          if (!userData.shortId) {
+              userData.shortId = generateShortId();
+              await StorageService.saveUser(userData);
+          }
 
           if (userData.isBanned) return { success: false, message: 'Akun ditangguhkan.' };
           
-          // Sinkronisasi khusus owner (Email Baru)
           if (userData.email === 'aldipranatapratama2005@gmail.com') {
               userData.role = UserRole.ADMIN;
               await StorageService.saveUser(userData);
@@ -160,21 +176,9 @@ export const AuthService = {
       try {
           if (!auth) throw new Error("Auth unavailable");
           await sendPasswordResetEmail(auth, email);
-          console.log("Reset email sent to:", email);
-          return { success: true, message: "Link reset password telah dikirim ke email Anda. Cek Inbox/Spam." };
+          return { success: true, message: "Link reset password telah dikirim ke email Anda." };
       } catch (error: any) {
-          console.error("Reset Password Error Full:", error);
-          let msg = "Gagal mengirim email reset.";
-          
-          if (error.code === 'auth/user-not-found') {
-              msg = "Email tidak terdaftar di sistem Autentikasi.";
-          } else if (error.code === 'auth/invalid-email') {
-              msg = "Format email salah.";
-          } else if (error.code === 'auth/unauthorized-domain') {
-              msg = "Domain preview ini belum diizinkan oleh Firebase. Coba di Localhost atau Deploy.";
-          }
-          
-          return { success: false, message: msg };
+          return { success: false, message: "Gagal mengirim email reset." };
       }
   },
 

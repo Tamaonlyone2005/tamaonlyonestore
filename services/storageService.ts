@@ -1,7 +1,7 @@
 
 import { db, initializationSuccessful } from './firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc } from "firebase/firestore";
-import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus } from '../types';
+import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS } from '../types';
 import { DEFAULT_PROFILE, ADMIN_ID } from '../constants';
 
 let isRemoteEnabled = initializationSuccessful && !!db;
@@ -9,14 +9,8 @@ let isRemoteEnabled = initializationSuccessful && !!db;
 const handleRemoteError = (error: any) => {
     const msg = error?.message || '';
     console.error("Firestore/Network Error:", error);
-    if (error?.code === 'unavailable' || msg.includes('offline')) {
-        console.warn("Switching to offline mode logic temporarily.");
-    }
 };
 
-/**
- * UTILITY: COMPRESS IMAGE TO < 500KB
- */
 export const compressImage = (file: File, maxSizeKB: number = 500): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -28,11 +22,8 @@ export const compressImage = (file: File, maxSizeKB: number = 500): Promise<stri
                 const canvas = document.createElement('canvas');
                 let width = img.width;
                 let height = img.height;
-                
-                // Max dimensions to help size reduction
                 const MAX_WIDTH = 1280;
                 const MAX_HEIGHT = 1280;
-
                 if (width > height) {
                     if (width > MAX_WIDTH) {
                         height *= MAX_WIDTH / width;
@@ -44,22 +35,16 @@ export const compressImage = (file: File, maxSizeKB: number = 500): Promise<stri
                         height = MAX_HEIGHT;
                     }
                 }
-
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx?.drawImage(img, 0, 0, width, height);
-
-                // Start with high quality
                 let quality = 0.9;
                 let dataUrl = canvas.toDataURL('image/jpeg', quality);
-                
-                // Loop to reduce quality if file is too big
                 while (dataUrl.length / 1024 > maxSizeKB && quality > 0.1) {
                     quality -= 0.1;
                     dataUrl = canvas.toDataURL('image/jpeg', quality);
                 }
-
                 resolve(dataUrl);
             };
             img.onerror = (err) => reject(err);
@@ -124,20 +109,14 @@ const setDocument = async (colName: string, docId: string, data: any) => {
 
 const deleteDocument = async (colName: string, docId: string) => {
     if (!docId) return;
-
     try {
         const key = `local_fallback_${colName}`;
         let existing = safeJSONParse<any[]>(key, []);
         existing = existing.filter((i: any) => i.id !== docId);
         localStorage.setItem(key, JSON.stringify(existing));
     } catch(e) {}
-
     if (isRemoteEnabled && db) {
-        try {
-            await deleteDoc(doc(db, colName, docId));
-        } catch (e) {
-            handleRemoteError(e);
-        }
+        try { await deleteDoc(doc(db, colName, docId)); } catch(e) { handleRemoteError(e); }
     }
 };
 
@@ -147,8 +126,6 @@ export const StorageService = {
   getSession: (): User | null => safeJSONParse<User | null>('tama_session', null),
   setSession: (user: User) => localStorage.setItem('tama_session', JSON.stringify(user)),
   clearSession: () => localStorage.removeItem('tama_session'),
-  
-  // Expose compressor
   compressImage: compressImage,
 
   getProfile: async (): Promise<SiteProfile> => {
@@ -179,10 +156,10 @@ export const StorageService = {
   deleteUser: async (id: string) => { await deleteDocument('users', id); },
   findUser: async (identifier: string): Promise<User | undefined> => {
       const users = await StorageService.getUsers();
-      return users.find(u => u.id === identifier || u.username === identifier);
+      // Support ID, Username, or ShortID (6 digits)
+      return users.find(u => u.id === identifier || u.username === identifier || u.shortId === identifier);
   },
   
-  // SELLER FEATURE
   registerSeller: async (userId: string, storeName: string, description: string) => {
       const user = await StorageService.findUser(userId);
       if(!user) return false;
@@ -191,14 +168,15 @@ export const StorageService = {
       user.storeName = storeName;
       user.storeDescription = description;
       user.storeRating = 0;
-      user.storeStatus = StoreStatus.ACTIVE; // Auto active for now, or change to PENDING for admin approval
+      user.storeStatus = StoreStatus.ACTIVE;
+      user.storeLevel = 1; // Default Level 1
+      user.storeExp = 0;
       
       await StorageService.saveUser(user);
       await StorageService.logActivity(userId, user.username, "OPEN_STORE", `Membuka toko baru: ${storeName}`);
       return true;
   },
 
-  // STORE MANAGEMENT (ADMIN)
   updateStoreStatus: async (userId: string, status: StoreStatus) => {
       const user = await StorageService.findUser(userId);
       if(!user || !user.isSeller) return;
@@ -218,45 +196,35 @@ export const StorageService = {
       user.storeStatus = undefined;
       
       await StorageService.saveUser(user);
-      
-      // Delete all products from this seller
       const allProducts = await StorageService.getProducts();
       const sellerProducts = allProducts.filter(p => p.sellerId === userId);
       for(const p of sellerProducts) {
           await StorageService.deleteProduct(p.id);
       }
-      
       await StorageService.logActivity(ADMIN_ID, "Administrator", "STORE_DELETE", `Menghapus toko ${storeName} dan produknya`);
   },
 
   followUser: async (followerId: string, targetId: string) => {
       const follower = await StorageService.findUser(followerId);
       const target = await StorageService.findUser(targetId);
-      
       if(!follower || !target) return false;
       if(!follower.following) follower.following = [];
       if(!target.followers) target.followers = [];
       
       if(follower.following.includes(targetId)) return false; 
-
       follower.following.push(targetId);
       target.followers.push(followerId);
-      
       await StorageService.saveUser(follower);
       await StorageService.saveUser(target);
-      await StorageService.logActivity(followerId, follower.username, 'FOLLOW', `Mulai mengikuti ${target.username}`);
       return true;
   },
   
   unfollowUser: async (followerId: string, targetId: string) => {
       const follower = await StorageService.findUser(followerId);
       const target = await StorageService.findUser(targetId);
-      
       if(!follower || !target) return false;
-      
       follower.following = (follower.following || []).filter(id => id !== targetId);
       target.followers = (target.followers || []).filter(id => id !== followerId);
-      
       await StorageService.saveUser(follower);
       await StorageService.saveUser(target);
       return true;
@@ -299,30 +267,27 @@ export const StorageService = {
       }
   },
 
-  // PRODUCT MANAGEMENT
   getProducts: async (): Promise<Product[]> => {
       let products = await getCollection<Product>('products');
       if (products.length === 0) products = [];
       return products;
   },
   
-  // NEW: Get only Official/Admin Products for Home/Shop
+  // Combine Admin products (Top) and Seller products (Bottom)
   getGlobalProducts: async (): Promise<Product[]> => {
       const all = await StorageService.getProducts();
-      // Only return products where sellerId is undefined or null (Admin products)
-      return all.filter(p => !p.sellerId);
+      const adminProducts = all.filter(p => !p.sellerId);
+      const sellerProducts = all.filter(p => p.sellerId);
+      return [...adminProducts, ...sellerProducts];
   },
 
-  // NEW: Get products by Seller ID for Store Profile
   getSellerProducts: async (sellerId: string): Promise<Product[]> => {
       const all = await StorageService.getProducts();
       return all.filter(p => p.sellerId === sellerId);
   },
 
   saveProduct: async (product: Product) => { await setDocument('products', product.id, product); },
-  deleteProduct: async (id: string) => { 
-      await deleteDocument('products', id); 
-  },
+  deleteProduct: async (id: string) => { await deleteDocument('products', id); },
 
   getOrders: async (): Promise<Order[]> => {
       return await getCollection<Order>('orders');
@@ -354,12 +319,46 @@ export const StorageService = {
       }
   },
   updateOrderStatus: async (orderId: string, status: OrderStatus, adminName: string) => {
+      // Fetch order first to get sellerId
+      let order: Order | undefined;
       if (isRemoteEnabled && db) {
+          const snap = await getDoc(doc(db, 'orders', orderId));
+          if(snap.exists()) order = snap.data() as Order;
+          
           try {
               const orderRef = doc(db, 'orders', orderId);
               await updateDoc(orderRef, { status });
           } catch(e) { handleRemoteError(e); }
+      } else {
+          // Local fallback
+          const allOrders = await StorageService.getOrders();
+          order = allOrders.find(o => o.id === orderId);
+          if (order) {
+              order.status = status;
+              await setDocument('orders', orderId, order);
+          }
       }
+
+      // STORE LEVELING LOGIC: If Completed, add EXP to Seller
+      if (status === OrderStatus.COMPLETED && order && order.sellerId) {
+          const seller = await StorageService.findUser(order.sellerId);
+          if (seller && seller.isSeller) {
+              const expGain = 10; // 10 EXP per successful transaction
+              seller.storeExp = (seller.storeExp || 0) + expGain;
+              
+              // Check Level Up
+              const currentLevel = seller.storeLevel || 1;
+              const nextLevelData = STORE_LEVELS.find(l => l.level === currentLevel + 1);
+              
+              if (nextLevelData && seller.storeExp >= nextLevelData.expRequired) {
+                  seller.storeLevel = nextLevelData.level;
+                  // Auto verify badge at Level 3? Maybe logic for later.
+              }
+              
+              await StorageService.saveUser(seller);
+          }
+      }
+
       await StorageService.logActivity(adminName, adminName, "ORDER_UPDATE", `Mengubah status Order #${orderId} menjadi ${status}`);
   },
 
@@ -453,14 +452,22 @@ export const StorageService = {
           if (type === 'ADD') user.points += amount; else user.points = Math.max(0, user.points - amount);
           await StorageService.saveUser(user);
           await StorageService.logActivity(adminName, adminName, "POINTS", `Mengubah poin user ${user.username} (${type === 'ADD' ? '+' : '-'}${amount})`);
+          
+          const history: PointHistory = { id: Date.now().toString(), userId: user.id, type, amount, reason: `${type} oleh ${adminName}`, timestamp: new Date().toISOString() };
+          await setDocument('point_history', history.id, history);
+          return true;
       }
-      const history: PointHistory = { id: Date.now().toString(), userId, type, amount, reason: `${type} oleh ${adminName}`, timestamp: new Date().toISOString() };
-      await setDocument('point_history', history.id, history);
+      return false;
   },
 
   getCoupons: async (): Promise<Coupon[]> => getCollection<Coupon>('coupons'),
   saveCoupon: async (coupon: Coupon) => { await setDocument('coupons', coupon.id, coupon); },
   deleteCoupon: async (id: string) => { await deleteDocument('coupons', id); },
 
-  createServiceRequest: async (req: ServiceRequest) => { await setDocument('service_requests', req.id, req); }
+  createServiceRequest: async (req: ServiceRequest) => { await setDocument('service_requests', req.id, req); },
+
+  // REPORT SYSTEM
+  createReport: async (report: Report) => { await setDocument('reports', report.id, report); },
+  getReports: async (): Promise<Report[]> => getCollection<Report>('reports'),
+  deleteReport: async (id: string) => { await deleteDocument('reports', id); }
 };

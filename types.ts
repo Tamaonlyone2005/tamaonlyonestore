@@ -20,6 +20,7 @@ export enum StoreStatus {
 
 export interface User {
   id: string; 
+  shortId?: string; // UID 6 Angka Unik
   username: string;
   email: string;
   role: UserRole;
@@ -45,6 +46,8 @@ export interface User {
   storeDescription?: string;
   storeRating?: number;
   storeStatus?: StoreStatus; 
+  storeLevel?: number; // Level Toko (1-5)
+  storeExp?: number;   // Pengalaman Toko untuk naik level
 }
 
 export interface ProductVariant {
@@ -80,6 +83,8 @@ export interface Product {
   // SELLER FIELDS
   sellerId?: string; 
   sellerName?: string;
+  sellerLevel?: number; // Menampilkan level seller di card produk
+  isVerifiedStore?: boolean; // Lencana Oranye
 }
 
 export interface CartItem {
@@ -114,6 +119,7 @@ export interface Coupon {
   costPoints: number;
   isPublic: boolean;
   isActive: boolean;
+  maxUsage?: number;
 }
 
 export interface SiteProfile {
@@ -129,7 +135,7 @@ export interface SiteProfile {
     [key: string]: string | undefined;
   };
   isLocked: boolean; // Maintenance Mode
-  maintenanceMessage?: string; // Pesan saat maintenance
+  maintenanceMessage?: string;
   vipThresholds: {
     bronze: number;
     silver: number;
@@ -169,7 +175,8 @@ export interface Order {
   status: OrderStatus;
   paymentProof?: string;
   createdAt: string;
-  downloadUrl?: string; 
+  downloadUrl?: string;
+  sellerId?: string; // Untuk EXP Seller
 }
 
 export interface PointHistory {
@@ -236,3 +243,23 @@ export interface ServiceRequest {
   status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED';
   createdAt: string;
 }
+
+export interface Report {
+  id: string;
+  reporterId: string;
+  targetId: string; // Bisa ID User, ID Produk, atau ID Toko
+  targetType: 'USER' | 'PRODUCT' | 'STORE';
+  reason: string;
+  description: string;
+  status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
+  createdAt: string;
+}
+
+// Konfigurasi Level Toko
+export const STORE_LEVELS = [
+  { level: 1, expRequired: 0, maxProducts: 5 },
+  { level: 2, expRequired: 100, maxProducts: 10 },
+  { level: 3, expRequired: 300, maxProducts: 20 },
+  { level: 4, expRequired: 600, maxProducts: 50 },
+  { level: 5, expRequired: 1000, maxProducts: 999 } // Unlimited
+];
