@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
 import { Product, User, CartItem, ProductVariant } from '../types';
 import { useToast } from '../components/Toast';
-import { ShoppingCart, ArrowRight, Info, Search, Filter, ArrowUpDown } from 'lucide-react';
+import { ShoppingCart, ArrowRight, Info, Search, Filter, ArrowUpDown, Clock, Zap } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
 import ReviewSection from '../components/ReviewSection';
 
@@ -123,10 +123,9 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                <ArrowRight className="rotate-180" size={16}/> Kembali ke Katalog
            </button>
 
-           {/* 1. COMPACT HEADER (Image + Title + Price) - Itemku Style */}
+           {/* 1. COMPACT HEADER (Image + Title + Price) */}
            <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl mb-6 animate-fade-in">
                <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
-                    {/* Image Thumbnail - Fixed Size Compact */}
                     <div className="flex-shrink-0 w-24 h-24 md:w-40 md:h-40 bg-gray-800 rounded-xl overflow-hidden border border-white/10 shadow-lg relative group">
                          <img src={activeProduct.image || "https://picsum.photos/500"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
                     </div>
@@ -140,8 +139,13 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                              )}
                          </div>
                          <h1 className="text-xl md:text-2xl font-bold text-white mb-2 leading-tight">{activeProduct.name}</h1>
-                         <div className="text-2xl md:text-3xl font-extrabold text-brand-400">
+                         <div className="text-2xl md:text-3xl font-extrabold text-brand-400 mb-3">
                              Rp {(selectedVariant ? selectedVariant.price : activeProduct.price).toLocaleString()}
+                         </div>
+                         
+                         {/* FEATURE 47: ESTIMATED PROCESS TIME */}
+                         <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-lg border border-green-500/20 text-xs font-bold">
+                             <Clock size={14}/> Rata-rata proses: 5-10 Menit (Otomatis)
                          </div>
                     </div>
                </div>
@@ -189,8 +193,8 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                                   </div>
                               </div>
 
-                              {/* Actions */}
-                              <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row gap-3">
+                              {/* Actions - Desktop */}
+                              <div className="pt-6 border-t border-white/5 hidden md:flex flex-col sm:flex-row gap-3">
                                   <button onClick={handleAddToCart} className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3.5 rounded-xl border border-white/10 flex items-center justify-center gap-2 transition-all">
                                       <ShoppingCart size={18}/> Tambah Keranjang
                                   </button>
@@ -213,6 +217,17 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                     
                     <ReviewSection productId={activeProduct.id} currentUser={user} />
                 </div>
+           </div>
+
+           {/* FEATURE 46: STICKY ADD TO CART (MOBILE ONLY) */}
+           <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1e293b]/95 backdrop-blur-lg border-t border-white/10 p-4 z-50 flex items-center gap-3 animate-slide-up">
+                <div className="flex-1">
+                    <p className="text-[10px] text-gray-400">Total Harga</p>
+                    <p className="text-lg font-black text-brand-400">Rp {(selectedVariant ? selectedVariant.price : activeProduct.price).toLocaleString()}</p>
+                </div>
+                <button onClick={handleBuyNow} className="bg-brand-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg flex items-center gap-2">
+                    Beli <ArrowRight size={18}/>
+                </button>
            </div>
         </div>
       );
@@ -285,8 +300,13 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                                   <p className="text-white text-xs font-bold truncate">{p.name}</p>
                                   <p className="text-brand-300 text-xs font-bold">Rp {p.price.toLocaleString()}</p>
                               </div>
+                              {/* Type Badge */}
                               <div className="absolute top-2 right-2 bg-black/50 px-2 py-0.5 rounded text-[10px] text-white backdrop-blur-md">
                                   {p.type}
+                              </div>
+                              {/* Fast Process Badge */}
+                              <div className="absolute top-2 left-2 bg-green-600 px-1.5 py-0.5 rounded text-[9px] text-white font-bold flex items-center gap-1 shadow-lg">
+                                  <Zap size={10} fill="currentColor"/> FAST
                               </div>
                           </div>
                       </div>

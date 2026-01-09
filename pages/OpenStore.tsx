@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { User, Product, ProductType, StoreStatus } from '../types';
+import { User, Product, ProductType, StoreStatus, UserRole } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { Store, Loader2, CheckCircle, Package, ArrowRight, Wallet, ShoppingBag, Plus, Upload, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '../components/Toast';
@@ -29,6 +29,13 @@ const OpenStore: React.FC = () => {
         const load = async () => {
             const session = StorageService.getSession();
             if(!session) return navigate('/login');
+            
+            // STRICT CHECK: Admin tidak boleh masuk sini
+            if(session.role === UserRole.ADMIN) {
+                navigate('/admin');
+                return;
+            }
+
             const freshUser = await StorageService.findUser(session.id);
             setUser(freshUser || session);
             

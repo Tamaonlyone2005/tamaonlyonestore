@@ -4,6 +4,8 @@ import { StorageService } from '../services/storageService';
 import { Product } from '../types';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import NewsTicker from '../components/NewsTicker';
+import FlashSale from '../components/FlashSale';
 import { Flame, Search, ChevronRight, Gift, ShieldCheck, Zap, Gamepad2, Ticket, Smartphone, Package } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
 
@@ -26,6 +28,9 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0f172a] pb-20">
+      {/* FEATURE 49: NEWS TICKER */}
+      <NewsTicker />
+
       {/* 1. HERO BANNER */}
       <section className="relative h-[450px] bg-[#1e293b] overflow-hidden flex items-center">
          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-[#0f172a] to-[#0f172a] z-0"></div>
@@ -77,7 +82,12 @@ const Home: React.FC = () => {
           </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-12 space-y-20">
+      <div className="max-w-7xl mx-auto px-4 py-12 space-y-12">
+          {/* FEATURE 1: FLASH SALE SECTION */}
+          <div className="animate-fade-in">
+              <FlashSale />
+          </div>
+
           {/* 3. PRODUCT ITEMS SECTION */}
           <section>
               <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
@@ -110,9 +120,9 @@ const Home: React.FC = () => {
           {/* 4. CTA BANNER */}
           <section className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-brand-900 to-purple-900 text-center py-16 px-4 border border-white/10">
                <div className="relative z-10 flex flex-col items-center">
-                   <h2 className="text-3xl font-bold text-white mb-4">Butuh Request Khusus?</h2>
-                   <p className="text-gray-200 max-w-xl mx-auto mb-8 text-lg">Jika item yang kamu cari tidak ada di katalog, kamu bisa request langsung ke admin.</p>
-                   <button onClick={() => navigate('/chat?type=support')} className="px-8 py-3 bg-white text-brand-900 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-lg">Hubungi Admin</button>
+                   <h2 className="text-3xl font-bold text-white mb-4">Butuh Bantuan?</h2>
+                   <p className="text-gray-200 max-w-xl mx-auto mb-8 text-lg">Cek halaman bantuan kami untuk pertanyaan yang sering diajukan.</p>
+                   <button onClick={() => navigate('/help')} className="px-8 py-3 bg-white text-brand-900 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-lg">Pusat Bantuan (FAQ)</button>
                </div>
           </section>
       </div>

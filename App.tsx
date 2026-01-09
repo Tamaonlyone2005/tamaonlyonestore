@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { StorageService } from './services/storageService';
-import { User } from './types';
+import { User, SiteProfile } from './types';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
@@ -15,19 +15,37 @@ import Community from './pages/Community';
 import Chat from './pages/Chat';
 import Cart from './pages/Cart';
 import OpenStore from './pages/OpenStore';
+import Help from './pages/Help';
 import { ToastProvider } from './components/Toast';
+import { AlertTriangle } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<SiteProfile | null>(null);
 
   useEffect(() => {
     refreshSession();
+    // Load config for Maintenance check
+    StorageService.getProfile().then(setProfile);
   }, []);
 
   const refreshSession = () => {
     const session = StorageService.getSession();
     setUser(session);
   };
+
+  // FEATURE 30: MAINTENANCE MODE
+  if (profile?.isLocked && user?.role !== 'ADMIN') {
+      return (
+          <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 text-center">
+              <div className="max-w-md">
+                  <AlertTriangle size={64} className="text-yellow-500 mx-auto mb-6 animate-bounce"/>
+                  <h1 className="text-3xl font-bold text-white mb-4">Website Sedang Maintenance</h1>
+                  <p className="text-gray-400">Kami sedang melakukan pembaruan sistem untuk meningkatkan layanan. Silakan kembali lagi nanti.</p>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <ToastProvider>
@@ -45,6 +63,7 @@ const App: React.FC = () => {
             <Route path="/community" element={<Community />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/open-store" element={<OpenStore />} />
+            <Route path="/help" element={<Help />} />
           </Routes>
         </Layout>
       </Router>

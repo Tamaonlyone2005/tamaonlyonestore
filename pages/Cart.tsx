@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StorageService } from '../services/storageService';
 import { CartItem, Order, OrderStatus, User } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, ShoppingCart, ArrowRight, Phone, CreditCard, Info, AlertCircle, CheckCircle, Copy, Landmark } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowRight, Phone, CreditCard, Info, AlertCircle, CheckCircle, Copy, Landmark, Ticket } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { PAYMENT_CONFIG } from '../constants';
 
@@ -16,6 +16,10 @@ const Cart: React.FC = () => {
     const [whatsapp, setWhatsapp] = useState('');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    
+    // Voucher State
+    const [voucherCode, setVoucherCode] = useState('');
+    const [discount, setDiscount] = useState(0);
 
     useEffect(() => {
         const session = StorageService.getSession();
@@ -33,7 +37,7 @@ const Cart: React.FC = () => {
     };
 
     const handleRemove = async (e: React.MouseEvent, id: string) => {
-        e.stopPropagation(); // FIX: Stop Bubbling
+        e.stopPropagation();
         if(!user) return;
         await StorageService.removeFromCart(user.id, id);
         loadCart(user.id);
@@ -48,6 +52,8 @@ const Cart: React.FC = () => {
         setIsProcessing(true);
         try {
             for (const item of cartItems) {
+                // Apply discount proportionally or to total (simplified here to just record price)
+                // For a real app, distribute discount across items
                 const order: Order = {
                     id: 'TRX' + Date.now().toString().slice(-6) + Math.floor(Math.random()*100),
                     userId: user.id,
@@ -58,8 +64,9 @@ const Cart: React.FC = () => {
                     productId: item.productId,
                     productName: item.productName,
                     variantName: item.variantName,
-                    price: item.price,
+                    price: item.price, // Save original price for record, handle total in payment
                     originalPrice: item.price,
+                    couponCode: voucherCode || undefined,
                     status: OrderStatus.PENDING,
                     createdAt: new Date().toISOString()
                 };
@@ -75,8 +82,19 @@ const Cart: React.FC = () => {
             setIsProcessing(false);
         }
     };
+    
+    const handleApplyVoucher = () => {
+        if(voucherCode.toLowerCase() === 'tama2025') {
+            setDiscount(5000);
+            addToast("Voucher berhasil dipasang! Hemat Rp 5.000", "success");
+        } else {
+            addToast("Kode voucher tidak valid", "error");
+            setDiscount(0);
+        }
+    };
 
-    const totalPrice = cartItems.reduce((acc, item) => acc + item.price, 0);
+    const subtotal = cartItems.reduce((acc, item) => acc + item.price, 0);
+    const totalPrice = Math.max(0, subtotal - discount);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -112,7 +130,6 @@ const Cart: React.FC = () => {
                                     <p className="text-xs text-gray-500 mb-2">{item.variantName || 'Regular Pack'}</p>
                                     <p className="text-brand-400 font-extrabold text-sm">Rp {item.price.toLocaleString()}</p>
                                 </div>
-                                {/* FIX: Ensure button is clickable */}
                                 <button onClick={(e) => handleRemove(e, item.id)} className="p-3 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all z-10 cursor-pointer">
                                     <Trash2 size={20}/>
                                 </button>
@@ -141,13 +158,38 @@ const Cart: React.FC = () => {
                                         />
                                     </div>
                                 </div>
+                                
+                                {/* VOUCHER SECTION */}
+                                <div>
+                                    <label className="text-xs font-extrabold text-gray-500 uppercase tracking-widest mb-2 block">Kode Voucher</label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                                                <Ticket size={18}/>
+                                            </div>
+                                            <input 
+                                                value={voucherCode} 
+                                                onChange={e => setVoucherCode(e.target.value)} 
+                                                placeholder="Punya kode promo?" 
+                                                className="w-full bg-dark-bg border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-white text-sm focus:border-brand-500 outline-none"
+                                            />
+                                        </div>
+                                        <button onClick={handleApplyVoucher} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-2xl font-bold text-xs">Apply</button>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="bg-dark-bg/50 rounded-2xl p-4 mb-6 border border-white/5">
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-gray-400 text-sm">Subtotal</span>
-                                    <span className="text-gray-300 text-sm font-bold">Rp {totalPrice.toLocaleString()}</span>
+                                    <span className="text-gray-300 text-sm font-bold">Rp {subtotal.toLocaleString()}</span>
                                 </div>
+                                {discount > 0 && (
+                                    <div className="flex justify-between items-center mb-2 text-green-400">
+                                        <span className="text-sm">Diskon</span>
+                                        <span className="text-sm font-bold">-Rp {discount.toLocaleString()}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-center pt-2 border-t border-white/5">
                                     <span className="text-white font-bold">Total</span>
                                     <span className="text-xl font-black text-brand-400">Rp {totalPrice.toLocaleString()}</span>

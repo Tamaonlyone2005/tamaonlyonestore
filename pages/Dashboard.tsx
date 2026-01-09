@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
 import { Product, User, UserRole, Order, ActivityLog, OrderStatus, VipLevel, Coupon, ProductType, SiteProfile, StoreStatus } from '../types';
-import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store } from 'lucide-react';
+import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -189,6 +189,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       if(siteProfile) {
           await StorageService.saveProfile(siteProfile);
           addToast("Pengaturan toko disimpan!", "success");
+          window.location.reload(); // Reload to apply maintenance mode immediately if changed
       }
   };
 
@@ -264,7 +265,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: PRODUCTS (ADMIN ONLY) */}
+          {/* ... (Other Tabs same as before) ... */}
           {activeTab === 'products' && (
               <div className="animate-fade-in space-y-8">
                   <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
@@ -281,7 +282,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                               <option value="OTHER">Lainnya</option>
                           </select>
                           
-                          {/* File Input for Product Image */}
                           <div className="relative group">
                               <input 
                                   type="file" 
@@ -317,7 +317,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                   <p className="text-brand-400 font-bold text-xs">Rp {p.price.toLocaleString()}</p>
                                   <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded uppercase">Official</span>
                               </div>
-                              {/* FIX: Stop Propagation */}
                               <button onClick={(e) => handleDeleteProduct(e, p.id)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-all rounded-lg z-10">
                                   <Trash2 size={18}/>
                               </button>
@@ -327,10 +326,8 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: ORDERS */}
           {activeTab === 'orders' && (
               <div className="animate-fade-in space-y-6">
-                  {/* ... Existing Order Search & List ... */}
                   <div className="flex items-center gap-4 bg-dark-card p-4 rounded-2xl border border-white/5">
                       <Search className="text-gray-500" size={20}/>
                       <input placeholder="Cari ID Transaksi atau Nama User..." className="bg-transparent border-none outline-none text-white w-full" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
@@ -375,7 +372,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: MEMBERS (UPDATED with UID & Details) */}
           {activeTab === 'members' && (
               <div className="animate-fade-in space-y-6">
                   <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
@@ -438,9 +434,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                           </td>
                                       </tr>
                                   ))}
-                                  {members.length === 0 && (
-                                      <tr><td colSpan={6} className="p-10 text-center text-gray-500">Belum ada member terdaftar selain Admin.</td></tr>
-                                  )}
                               </tbody>
                           </table>
                       </div>
@@ -448,7 +441,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
           
-          {/* NEW TAB: STORES MANAGEMENT */}
           {activeTab === 'stores' && (
               <div className="animate-fade-in space-y-6">
                   <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
@@ -503,9 +495,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                           </td>
                                       </tr>
                                   ))}
-                                  {sellers.length === 0 && (
-                                      <tr><td colSpan={4} className="p-10 text-center text-gray-500">Belum ada member yang membuka toko.</td></tr>
-                                  )}
                               </tbody>
                           </table>
                       </div>
@@ -513,7 +502,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-           {/* TAB: LOGS */}
            {activeTab === 'logs' && (
               <div className="animate-fade-in bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
                   <div className="p-6 border-b border-white/5 flex justify-between items-center">
@@ -532,15 +520,34 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
           
-          {/* TAB: SETTINGS */}
+          {/* TAB: SETTINGS WITH MAINTENANCE TOGGLE */}
           {activeTab === 'settings' && siteProfile && (
             <div className="animate-fade-in space-y-8">
                 <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
-                     {/* ... Settings Form ... */}
                      <div className="flex justify-between items-center mb-6">
                          <h3 className="text-xl font-bold text-white">Pengaturan Umum Toko</h3>
                          <button onClick={handleSaveProfile} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"><Save size={16}/> Simpan Perubahan</button>
                      </div>
+                     
+                     {/* MAINTENANCE TOGGLE */}
+                     <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center justify-between">
+                         <div className="flex items-center gap-3">
+                             <div className={`p-3 rounded-xl ${siteProfile.isLocked ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
+                                 {siteProfile.isLocked ? <Lock size={20}/> : <Unlock size={20}/>}
+                             </div>
+                             <div>
+                                 <h4 className="font-bold text-white">Maintenance Mode</h4>
+                                 <p className="text-xs text-gray-400">Jika aktif, hanya Admin yang bisa mengakses website.</p>
+                             </div>
+                         </div>
+                         <button 
+                            onClick={() => setSiteProfile({...siteProfile, isLocked: !siteProfile.isLocked})}
+                            className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${siteProfile.isLocked ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                         >
+                             {siteProfile.isLocked ? 'NONAKTIFKAN' : 'AKTIFKAN'}
+                         </button>
+                     </div>
+
                      <div className="grid grid-cols-1 gap-6">
                          <div>
                              <label className="block text-sm text-gray-400 mb-2">Nama Toko</label>
@@ -549,13 +556,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                          <div>
                              <label className="block text-sm text-gray-400 mb-2">Deskripsi Toko</label>
                              <textarea value={siteProfile.description} onChange={e => setSiteProfile({...siteProfile, description: e.target.value})} className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" rows={3}/>
-                         </div>
-                         <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center gap-4">
-                             <div className="p-3 bg-blue-500 rounded-xl text-white"><CheckCircle size={24}/></div>
-                             <div>
-                                 <p className="text-sm text-blue-400 font-bold uppercase tracking-wider">Akses Owner Terverifikasi</p>
-                                 <p className="text-xs text-gray-400 mt-1">Email Login Admin: <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">aldipranatapratama2005@gmail.com</span></p>
-                             </div>
                          </div>
                      </div>
                 </div>

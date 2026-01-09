@@ -88,6 +88,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
     return name;
   };
 
+  const isAdmin = user?.role === UserRole.ADMIN;
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0f172a] text-white selection:bg-brand-500 selection:text-white font-sans">
       {/* Navigation */}
@@ -119,7 +121,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                   <Gamepad2 size={18} /> Produk
                 </Link>
                 
-                {user && user.role !== UserRole.ADMIN && (
+                {/* Community Link: Only for Members (Non-Admin) */}
+                {user && !isAdmin && (
                    <Link to="/community" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                      <Users size={18} /> Komunitas
                    </Link>
@@ -136,7 +139,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                         )}
                     </Link>
 
-                    <div className="relative group cursor-pointer" onClick={() => user.role === UserRole.ADMIN ? navigate('/admin') : navigate('/profile')}>
+                    <div className="relative group cursor-pointer" onClick={() => isAdmin ? navigate('/admin') : navigate('/profile')}>
                         <Bell size={20} className="text-gray-300 group-hover:text-white" />
                         {unreadCount > 0 && (
                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white border border-dark-bg animate-pulse">
@@ -145,23 +148,25 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                         )}
                     </div>
                     
-                    {/* Seller Menu */}
-                    {user.isSeller && (
+                    {/* Seller Menu: HANYA jika Member DAN sudah jadi Seller */}
+                    {user.isSeller && !isAdmin && (
                          <Link to="/open-store" className="text-brand-400 hover:text-white flex items-center gap-1 font-bold text-sm bg-brand-500/10 px-3 py-1.5 rounded-lg border border-brand-500/20">
                             <Store size={16} /> Toko Saya
                          </Link>
                     )}
 
-                    {user.role === UserRole.ADMIN && (
+                    {/* Admin Menu: Khusus Admin */}
+                    {isAdmin && (
                       <Link to="/admin" className="text-gray-300 hover:text-brand-400 flex items-center gap-1 font-bold text-sm">
                         <Shield size={16} /> Panel Admin
                       </Link>
                     )}
+                    
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/profile')}>
                       <img src={user.avatar || "https://picsum.photos/32/32"} alt="Profile" className="w-9 h-9 rounded-full border-2 border-brand-500/50 object-cover"/>
                       <div className="hidden lg:block leading-tight">
                           <p className="text-sm font-bold text-white">{user.username}</p>
-                          <p className="text-[10px] text-brand-400 font-mono">{user.role === UserRole.ADMIN ? 'ADMIN' : `IDR ${user.points.toLocaleString()}`}</p>
+                          <p className="text-[10px] text-brand-400 font-mono">{isAdmin ? 'ADMIN' : `IDR ${user.points.toLocaleString()}`}</p>
                       </div>
                     </div>
                     <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-400 transition-colors"><LogOut size={20} /></button>
@@ -198,15 +203,17 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
             <div className="px-4 pt-2 pb-4 space-y-2">
               <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Home</Link>
               <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Produk</Link>
-              {user && user.role !== UserRole.ADMIN && (
+              
+              {user && !isAdmin && (
                    <Link to="/community" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Komunitas</Link>
               )}
               
-              {user?.isSeller && (
+              {/* Mobile Seller Link: Member Only */}
+              {user?.isSeller && !isAdmin && (
                   <Link to="/open-store" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Toko Saya</Link>
               )}
               
-              {user?.role === UserRole.ADMIN && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Panel Admin</Link>}
+              {isAdmin && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Panel Admin</Link>}
               
               {user ? (
                 <>

@@ -44,7 +44,7 @@ export interface User {
   storeName?: string;
   storeDescription?: string;
   storeRating?: number;
-  storeStatus?: StoreStatus; // Status verifikasi toko oleh admin
+  storeStatus?: StoreStatus; 
 }
 
 export interface ProductVariant {
@@ -78,7 +78,7 @@ export interface Product {
   downloadUrl?: string;
   
   // SELLER FIELDS
-  sellerId?: string; // Jika undefined/null, berarti produk ADMIN (Official)
+  sellerId?: string; 
   sellerName?: string;
 }
 
@@ -92,7 +92,7 @@ export interface CartItem {
   quantity: number;
   inputData: { [key: string]: string };
   note?: string;
-  sellerId?: string; // Track seller info in cart
+  sellerId?: string; 
 }
 
 export interface Review {
@@ -128,7 +128,8 @@ export interface SiteProfile {
     whatsapp?: string;
     [key: string]: string | undefined;
   };
-  isLocked: boolean;
+  isLocked: boolean; // Maintenance Mode
+  maintenanceMessage?: string; // Pesan saat maintenance
   vipThresholds: {
     bronze: number;
     silver: number;
