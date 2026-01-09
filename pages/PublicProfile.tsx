@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
-import { User, VipLevel } from '../types';
+import { User, VipLevel, Product } from '../types';
 import UserAvatar from '../components/UserAvatar';
-import { UserPlus, UserCheck, MessageCircle, Crown, BadgeCheck, Shield, ArrowLeft } from 'lucide-react';
+import { UserPlus, UserCheck, MessageCircle, Crown, BadgeCheck, Shield, ArrowLeft, Store } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import ProductCard from '../components/ProductCard';
 
 const PublicProfile: React.FC = () => {
     const { id } = useParams<{id: string}>();
@@ -14,6 +15,7 @@ const PublicProfile: React.FC = () => {
     
     const [profileUser, setProfileUser] = useState<User | null>(null);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [sellerProducts, setSellerProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -27,6 +29,12 @@ const PublicProfile: React.FC = () => {
             if(id) {
                 const target = await StorageService.findUser(id);
                 setProfileUser(target || null);
+                
+                // Jika user adalah seller, ambil produknya
+                if(target?.isSeller) {
+                    const products = await StorageService.getSellerProducts(target.id);
+                    setSellerProducts(products);
+                }
             }
             setLoading(false);
         };
@@ -65,21 +73,21 @@ const PublicProfile: React.FC = () => {
     const isFollowing = currentUser?.following?.includes(profileUser.id);
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-8 mb-20">
+        <div className="max-w-4xl mx-auto px-4 py-8 mb-20">
             <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-6"><ArrowLeft size={20}/> Kembali</button>
 
-            <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden shadow-2xl relative">
-                 {/* Updated Banner Section */}
-                 <div className="h-32 bg-gradient-to-r from-brand-900 to-purple-900 relative">
+            <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden shadow-2xl relative mb-8">
+                 {/* Banner Section */}
+                 <div className="h-40 bg-gradient-to-r from-brand-900 to-purple-900 relative">
                      {profileUser.banner ? (
                          <img src={profileUser.banner} className="w-full h-full object-cover opacity-60"/>
                      ) : null}
                  </div>
                  
                  <div className="px-6 pb-8 relative">
-                     <div className="-mt-16 mb-4 flex justify-between items-end">
+                     <div className="-mt-12 mb-4 flex justify-between items-end">
                          <div className="relative">
-                            <UserAvatar user={profileUser} size="xl" className="shadow-xl"/>
+                            <UserAvatar user={profileUser} size="xl" className="shadow-xl border-4 border-dark-card"/>
                             {profileUser.vipLevel !== VipLevel.NONE && (
                                 <div className="absolute -bottom-2 -right-2 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
                                     <Crown size={10}/> {profileUser.vipLevel}
@@ -87,7 +95,7 @@ const PublicProfile: React.FC = () => {
                             )}
                          </div>
                          {!isMe && (
-                             <div className="flex gap-2">
+                             <div className="flex gap-2 mb-2">
                                  {isFollowing ? (
                                      <button onClick={handleUnfollow} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2">
                                          <UserCheck size={16}/> Mengikuti
@@ -109,7 +117,14 @@ const PublicProfile: React.FC = () => {
                              {profileUser.username}
                              {profileUser.isVerified && <BadgeCheck size={20} className="text-green-500"/>}
                          </h1>
-                         <p className="text-sm text-gray-500">Bergabung sejak {new Date(profileUser.createdAt).toLocaleDateString()}</p>
+                         {profileUser.isSeller && (
+                             <div className="flex items-center gap-2 mt-1">
+                                 <Store size={14} className="text-brand-400"/>
+                                 <span className="text-brand-400 font-bold text-sm">{profileUser.storeName}</span>
+                                 <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 rounded text-gray-400">Seller</span>
+                             </div>
+                         )}
+                         <p className="text-sm text-gray-500 mt-2">Bergabung sejak {new Date(profileUser.createdAt).toLocaleDateString()}</p>
                          {profileUser.bio && <p className="text-gray-300 mt-2 text-sm">{profileUser.bio}</p>}
                      </div>
 
@@ -129,6 +144,29 @@ const PublicProfile: React.FC = () => {
                      </div>
                  </div>
             </div>
+
+            {/* SELLER PRODUCTS SECTION */}
+            {profileUser.isSeller && (
+                <div className="space-y-6">
+                    <h2 className="text-xl font-bold text-white border-l-4 border-brand-500 pl-4">Produk dari Toko {profileUser.storeName}</h2>
+                    {sellerProducts.length === 0 ? (
+                        <div className="p-8 text-center bg-white/5 rounded-2xl text-gray-500 border border-white/5 border-dashed">
+                            Seller ini belum memiliki produk.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {sellerProducts.map(p => (
+                                <ProductCard 
+                                    key={p.id} 
+                                    product={p} 
+                                    canBuy={true} 
+                                    onBuy={() => navigate(`/shop?product=${p.id}`)} 
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

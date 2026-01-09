@@ -14,7 +14,8 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     const fetchProducts = async () => {
-        const data = await StorageService.getProducts();
+        // Hanya ambil produk global (admin)
+        const data = await StorageService.getGlobalProducts();
         setProducts(data);
         setLoading(false);
     };
@@ -95,7 +96,7 @@ const Home: React.FC = () => {
               ) : products.length === 0 ? (
                   <div className="bg-[#1e293b] p-12 rounded-2xl text-center text-gray-500 border border-white/5 border-dashed flex flex-col items-center gap-4">
                       <Package size={48} className="opacity-20"/>
-                      <p>Belum ada produk yang dipajang saat ini.</p>
+                      <p>Belum ada produk Official yang dipajang saat ini.</p>
                   </div>
               ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">

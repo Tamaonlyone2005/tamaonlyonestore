@@ -36,11 +36,19 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
   useEffect(() => {
     const loadData = async () => {
         setLoading(true);
-        const allProducts = await StorageService.getProducts();
+        // HANYA AMBIL PRODUK GLOBAL (ADMIN)
+        const allProducts = await StorageService.getGlobalProducts();
         setProducts(allProducts);
         
         if (productId) {
-            const found = allProducts.find(p => p.id === productId);
+            // Jika ID produk ada di URL, coba cari di global. Jika tidak ada, mungkin produk seller (cari manual)
+            let found = allProducts.find(p => p.id === productId);
+            if (!found) {
+               // Fallback: Cari di semua produk jika link dishare direct
+               const reallyAll = await StorageService.getProducts();
+               found = reallyAll.find(p => p.id === productId);
+            }
+
             if (found) {
                 setActiveProduct(found);
                 if(found.variants && found.variants.length > 0) setSelectedVariant(found.variants[0]);
@@ -91,7 +99,8 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
           variantName: variantName,
           quantity: 1,
           inputData: inputFields,
-          note: inputFields['note'] || ''
+          note: inputFields['note'] || '',
+          sellerId: activeProduct.sellerId
       };
       
       await StorageService.addToCart(user.id, item);
@@ -111,7 +120,7 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
      return (
         <div className="max-w-6xl mx-auto px-4 py-8 pb-32">
            <button onClick={() => navigate('/shop')} className="mb-6 text-gray-400 hover:text-white flex items-center gap-2 font-bold text-sm">
-               <ArrowRight className="rotate-180" size={16}/> Kembali ke Toko
+               <ArrowRight className="rotate-180" size={16}/> Kembali ke Katalog
            </button>
 
            {/* 1. COMPACT HEADER (Image + Title + Price) - Itemku Style */}
@@ -126,6 +135,9 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                          <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-2">
                              <span className="px-2 py-0.5 rounded text-[10px] bg-brand-600 text-white font-bold uppercase tracking-wider">{activeProduct.type}</span>
                              <span className="px-2 py-0.5 rounded text-[10px] bg-white/10 text-gray-300 font-bold uppercase tracking-wider">{activeProduct.category || 'General'}</span>
+                             {activeProduct.sellerName && (
+                                 <span className="px-2 py-0.5 rounded text-[10px] bg-purple-600/20 text-purple-300 font-bold uppercase tracking-wider border border-purple-500/20">Seller: {activeProduct.sellerName}</span>
+                             )}
                          </div>
                          <h1 className="text-xl md:text-2xl font-bold text-white mb-2 leading-tight">{activeProduct.name}</h1>
                          <div className="text-2xl md:text-3xl font-extrabold text-brand-400">
@@ -211,7 +223,7 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
       <div className="max-w-7xl mx-auto px-4 py-8 pb-32">
           {/* Header & Filter Controls */}
           <div className="mb-8 space-y-4">
-              <h1 className="text-3xl font-bold text-white">Katalog Produk</h1>
+              <h1 className="text-3xl font-bold text-white">Katalog Official Store</h1>
               
               <div className="bg-[#1e293b] p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row gap-4">
                   {/* Search */}

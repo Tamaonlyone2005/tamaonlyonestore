@@ -1,7 +1,7 @@
 
 import { db, initializationSuccessful } from './firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc } from "firebase/firestore";
-import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole } from '../types';
+import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus } from '../types';
 import { DEFAULT_PROFILE, ADMIN_ID } from '../constants';
 
 let isRemoteEnabled = initializationSuccessful && !!db;
@@ -66,15 +66,6 @@ export const compressImage = (file: File, maxSizeKB: number = 500): Promise<stri
         };
         reader.onerror = (err) => reject(err);
     });
-};
-
-/**
- * GENERATE 50+ DUMMY PRODUCTS FOR PREVIEW
- */
-const generateDefaultProducts = (): Product[] => {
-    const products: Product[] = [];
-    // ... Logic skipped ...
-    return products;
 };
 
 const cleanData = (obj: any): any => {
@@ -200,10 +191,42 @@ export const StorageService = {
       user.storeName = storeName;
       user.storeDescription = description;
       user.storeRating = 0;
+      user.storeStatus = StoreStatus.ACTIVE; // Auto active for now, or change to PENDING for admin approval
       
       await StorageService.saveUser(user);
       await StorageService.logActivity(userId, user.username, "OPEN_STORE", `Membuka toko baru: ${storeName}`);
       return true;
+  },
+
+  // STORE MANAGEMENT (ADMIN)
+  updateStoreStatus: async (userId: string, status: StoreStatus) => {
+      const user = await StorageService.findUser(userId);
+      if(!user || !user.isSeller) return;
+      user.storeStatus = status;
+      await StorageService.saveUser(user);
+      await StorageService.logActivity(ADMIN_ID, "Administrator", "STORE_UPDATE", `Mengubah status toko ${user.storeName} menjadi ${status}`);
+  },
+  
+  deleteStore: async (userId: string) => {
+      const user = await StorageService.findUser(userId);
+      if(!user) return;
+      
+      const storeName = user.storeName;
+      user.isSeller = false;
+      user.storeName = undefined;
+      user.storeDescription = undefined;
+      user.storeStatus = undefined;
+      
+      await StorageService.saveUser(user);
+      
+      // Delete all products from this seller
+      const allProducts = await StorageService.getProducts();
+      const sellerProducts = allProducts.filter(p => p.sellerId === userId);
+      for(const p of sellerProducts) {
+          await StorageService.deleteProduct(p.id);
+      }
+      
+      await StorageService.logActivity(ADMIN_ID, "Administrator", "STORE_DELETE", `Menghapus toko ${storeName} dan produknya`);
   },
 
   followUser: async (followerId: string, targetId: string) => {
@@ -276,13 +299,26 @@ export const StorageService = {
       }
   },
 
+  // PRODUCT MANAGEMENT
   getProducts: async (): Promise<Product[]> => {
       let products = await getCollection<Product>('products');
-      if (products.length === 0) {
-          products = [];
-      }
+      if (products.length === 0) products = [];
       return products;
   },
+  
+  // NEW: Get only Official/Admin Products for Home/Shop
+  getGlobalProducts: async (): Promise<Product[]> => {
+      const all = await StorageService.getProducts();
+      // Only return products where sellerId is undefined or null (Admin products)
+      return all.filter(p => !p.sellerId);
+  },
+
+  // NEW: Get products by Seller ID for Store Profile
+  getSellerProducts: async (sellerId: string): Promise<Product[]> => {
+      const all = await StorageService.getProducts();
+      return all.filter(p => p.sellerId === sellerId);
+  },
+
   saveProduct: async (product: Product) => { await setDocument('products', product.id, product); },
   deleteProduct: async (id: string) => { 
       await deleteDocument('products', id); 

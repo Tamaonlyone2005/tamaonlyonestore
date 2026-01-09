@@ -12,6 +12,12 @@ export enum VipLevel {
   GOLD = 'GOLD'
 }
 
+export enum StoreStatus {
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED'
+}
+
 export interface User {
   id: string; 
   username: string;
@@ -38,6 +44,7 @@ export interface User {
   storeName?: string;
   storeDescription?: string;
   storeRating?: number;
+  storeStatus?: StoreStatus; // Status verifikasi toko oleh admin
 }
 
 export interface ProductVariant {
@@ -71,7 +78,7 @@ export interface Product {
   downloadUrl?: string;
   
   // SELLER FIELDS
-  sellerId?: string; // If undefined, it's Admin/Official
+  sellerId?: string; // Jika undefined/null, berarti produk ADMIN (Official)
   sellerName?: string;
 }
 
@@ -85,6 +92,7 @@ export interface CartItem {
   quantity: number;
   inputData: { [key: string]: string };
   note?: string;
+  sellerId?: string; // Track seller info in cart
 }
 
 export interface Review {

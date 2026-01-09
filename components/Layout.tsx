@@ -22,9 +22,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   const [siteLogo, setSiteLogo] = useState<string>('');
   const [siteName, setSiteName] = useState<string>('Tamaonlyone Store');
   
-  // Language State
-  const [lang, setLang] = useState<'ID' | 'EN'>('ID');
-  
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -81,10 +78,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
      if(!user) navigate('/login'); else navigate('/chat?type=support');
   };
   
-  const toggleLanguage = () => {
-      setLang(prev => prev === 'ID' ? 'EN' : 'ID');
-  };
-
   const isActive = (path: string) => location.pathname === path;
 
   const renderLogoText = (name: string) => {
@@ -93,17 +86,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         return <>{parts[0]}<span className="text-brand-500">Store</span>{parts.slice(1).join('Store')}</>;
     }
     return name;
-  };
-
-  // Translations Map (Simple)
-  const t = {
-      home: lang === 'ID' ? 'Home' : 'Home',
-      product: lang === 'ID' ? 'Produk' : 'Shop',
-      community: lang === 'ID' ? 'Komunitas' : 'Community',
-      store: lang === 'ID' ? 'Toko Saya' : 'My Store',
-      panel: lang === 'ID' ? 'Panel' : 'Admin',
-      login: lang === 'ID' ? 'Masuk' : 'Login',
-      signup: lang === 'ID' ? 'Daftar' : 'Sign Up'
   };
 
   return (
@@ -131,23 +113,18 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-1 items-center">
                 <Link to="/" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
-                  <Home size={18} /> {t.home}
+                  <Home size={18} /> Home
                 </Link>
                 <Link to="/shop" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/shop') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
-                  <Gamepad2 size={18} /> {t.product}
+                  <Gamepad2 size={18} /> Produk
                 </Link>
                 
                 {user && user.role !== UserRole.ADMIN && (
                    <Link to="/community" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
-                     <Users size={18} /> {t.community}
+                     <Users size={18} /> Komunitas
                    </Link>
                 )}
                 
-                {/* Language Switcher */}
-                <button onClick={toggleLanguage} className="ml-2 px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold flex items-center gap-2 text-gray-300 border border-white/5">
-                    <Globe size={14}/> {lang}
-                </button>
-
                 {user ? (
                   <div className="flex items-center gap-4 ml-6 pl-6 border-l border-white/10">
                     <Link to="/cart" className="relative group cursor-pointer text-gray-300 hover:text-white p-2">
@@ -171,13 +148,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                     {/* Seller Menu */}
                     {user.isSeller && (
                          <Link to="/open-store" className="text-brand-400 hover:text-white flex items-center gap-1 font-bold text-sm bg-brand-500/10 px-3 py-1.5 rounded-lg border border-brand-500/20">
-                            <Store size={16} /> {t.store}
+                            <Store size={16} /> Toko Saya
                          </Link>
                     )}
 
                     {user.role === UserRole.ADMIN && (
                       <Link to="/admin" className="text-gray-300 hover:text-brand-400 flex items-center gap-1 font-bold text-sm">
-                        <Shield size={16} /> {t.panel}
+                        <Shield size={16} /> Panel Admin
                       </Link>
                     )}
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/profile')}>
@@ -191,8 +168,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 ml-6">
-                     <Link to="/login" className="text-gray-300 hover:text-white font-bold text-sm">{t.login}</Link>
-                    <Link to="/register" className="bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg shadow-brand-500/25">{t.signup}</Link>
+                     <Link to="/login" className="text-gray-300 hover:text-white font-bold text-sm">Masuk</Link>
+                    <Link to="/register" className="bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg shadow-brand-500/25">Daftar</Link>
                   </div>
                 )}
               </div>
@@ -200,9 +177,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
 
             {/* Mobile menu button */}
             <div className="-mr-2 flex md:hidden items-center gap-4">
-                <button onClick={toggleLanguage} className="px-2 py-1 rounded bg-white/5 text-[10px] font-bold text-gray-300 border border-white/5">
-                    {lang}
-                </button>
                 {user && (
                     <Link to="/cart" className="relative p-2 text-gray-300">
                         <ShoppingCart size={24} />
@@ -222,17 +196,17 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         {isMenuOpen && (
           <div className="md:hidden bg-[#1e293b] border-b border-white/10 animate-slide-up">
             <div className="px-4 pt-2 pb-4 space-y-2">
-              <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">{t.home}</Link>
-              <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">{t.product}</Link>
+              <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Home</Link>
+              <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Produk</Link>
               {user && user.role !== UserRole.ADMIN && (
-                   <Link to="/community" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">{t.community}</Link>
+                   <Link to="/community" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Komunitas</Link>
               )}
               
               {user?.isSeller && (
-                  <Link to="/open-store" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">{t.store}</Link>
+                  <Link to="/open-store" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Toko Saya</Link>
               )}
               
-              {user?.role === UserRole.ADMIN && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Admin Panel</Link>}
+              {user?.role === UserRole.ADMIN && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Panel Admin</Link>}
               
               {user ? (
                 <>
@@ -245,13 +219,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                           </div>
                       </div>
                   </div>
-                  <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">My Account</Link>
-                  <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-red-400 hover:bg-white/5">Logout</button>
+                  <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Akun Saya</Link>
+                  <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-red-400 hover:bg-white/5">Keluar</button>
                 </>
               ) : (
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-white/5 text-white">{t.login}</Link>
-                  <Link to="/register" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-brand-600 text-white">{t.signup}</Link>
+                  <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-white/5 text-white">Masuk</Link>
+                  <Link to="/register" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-brand-600 text-white">Daftar</Link>
                 </div>
               )}
             </div>
@@ -278,7 +252,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
               <p className="text-gray-500 text-sm">The most trusted digital store for your daily needs. Fast, secure, and reliable.</p>
           </div>
           <div>
-              <h4 className="font-bold text-white mb-4">Payment Methods</h4>
+              <h4 className="font-bold text-white mb-4">Metode Pembayaran</h4>
               <div className="flex flex-wrap justify-center md:justify-start gap-2">
                   <span className="px-3 py-1 bg-white/5 rounded text-xs text-gray-400">QRIS</span>
                   <span className="px-3 py-1 bg-white/5 rounded text-xs text-gray-400">BCA</span>
@@ -286,9 +260,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
               </div>
           </div>
           <div>
-              <h4 className="font-bold text-white mb-4">Support</h4>
-              <p className="text-gray-500 text-sm mb-2">Operational Hours: 09:00 - 22:00 WIB</p>
-              <button onClick={handleCsClick} className="text-brand-400 text-sm font-bold hover:underline">Contact Support</button>
+              <h4 className="font-bold text-white mb-4">Bantuan</h4>
+              <p className="text-gray-500 text-sm mb-2">Jam Operasional: 09:00 - 22:00 WIB</p>
+              <button onClick={handleCsClick} className="text-brand-400 text-sm font-bold hover:underline">Hubungi Kami</button>
           </div>
         </div>
         <div className="text-center mt-10 pt-6 border-t border-white/5">

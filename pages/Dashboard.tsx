@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { Product, User, UserRole, Order, ActivityLog, OrderStatus, VipLevel, Coupon, ProductType, SiteProfile } from '../types';
-import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload } from 'lucide-react';
+import { Product, User, UserRole, Order, ActivityLog, OrderStatus, VipLevel, Coupon, ProductType, SiteProfile, StoreStatus } from '../types';
+import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -22,12 +22,13 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: s
 const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'members' | 'coupons' | 'logs' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'members' | 'stores' | 'coupons' | 'logs' | 'settings'>('overview');
   const [loading, setLoading] = useState(false);
   
   // Data States
   const [products, setProducts] = useState<Product[]>([]);
   const [members, setMembers] = useState<User[]>([]);
+  const [sellers, setSellers] = useState<User[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -76,9 +77,13 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             StorageService.getProfile()
         ]);
         
-        setProducts(p);
+        // Hanya tampilkan produk admin di tab produk
+        setProducts(p.filter(prod => !prod.sellerId));
+        
         const onlyMembers = allUsers.filter(u => u.role !== UserRole.ADMIN);
         setMembers(onlyMembers);
+        setSellers(onlyMembers.filter(u => u.isSeller));
+        
         setLogs(l);
         setCoupons(c);
         setSiteProfile(prof);
@@ -127,11 +132,11 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   const handleDeleteProduct = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // FIX: Prevent row click bubbling
+    e.stopPropagation();
     if (confirm("Hapus produk ini?")) {
       await StorageService.deleteProduct(id);
       addToast("Produk dihapus", "info");
-      setProducts(prev => prev.filter(p => p.id !== id)); // Optimistic UI Update
+      setProducts(prev => prev.filter(p => p.id !== id));
     }
   };
 
@@ -141,8 +146,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   const handleUserAction = async (e: React.MouseEvent, userId: string, action: 'verify' | 'ban' | 'delete') => {
-      e.stopPropagation(); // FIX: Prevent bubbling
-      
+      e.stopPropagation();
       const target = await StorageService.findUser(userId);
       if(!target) return;
 
@@ -159,6 +163,20 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
           addToast("Status user diperbarui", "success");
           refreshData();
       }
+  };
+  
+  const handleStoreAction = async (userId: string, action: 'VERIFY' | 'SUSPEND' | 'DELETE') => {
+      if(action === 'DELETE') {
+          if(confirm("Hapus toko dan semua produknya?")) {
+              await StorageService.deleteStore(userId);
+              addToast("Toko dihapus.", "info");
+          }
+      } else {
+          const status = action === 'VERIFY' ? StoreStatus.ACTIVE : StoreStatus.SUSPENDED;
+          await StorageService.updateStoreStatus(userId, status);
+          addToast("Status toko diperbarui.", "success");
+      }
+      refreshData();
   };
   
   const handleManagePoints = async (userId: string, amount: number, type: 'ADD' | 'SUBTRACT') => {
@@ -199,6 +217,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                 { id: 'products', label: 'Katalog Produk', icon: Package },
                 { id: 'orders', label: 'Pesanan Masuk', icon: ShoppingCart, badge: stats.pendingOrders },
                 { id: 'members', label: 'Daftar Member', icon: Users },
+                { id: 'stores', label: 'Manajemen Toko', icon: Store },
                 { id: 'coupons', label: 'Promo & Kupon', icon: Ticket },
                 { id: 'logs', label: 'Log Aktivitas', icon: FileText },
                 { id: 'settings', label: 'Pengaturan Toko', icon: Settings }
@@ -245,11 +264,11 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: PRODUCTS */}
+          {/* TAB: PRODUCTS (ADMIN ONLY) */}
           {activeTab === 'products' && (
               <div className="animate-fade-in space-y-8">
                   <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
-                      <h3 className="text-xl font-bold text-white mb-6">Tambah Produk Baru</h3>
+                      <h3 className="text-xl font-bold text-white mb-6">Tambah Produk Admin (Official)</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <input placeholder="Nama Produk" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.name || ''} onChange={e => setNewProduct({...newProduct, name: e.target.value})}/>
                           <input placeholder="Harga Dasar (Rp)" type="number" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})}/>
@@ -285,7 +304,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                           </div>
 
                           <textarea placeholder="Deskripsi Produk" className="md:col-span-2 bg-dark-bg border border-white/10 rounded-xl p-3 text-white h-24" value={newProduct.description || ''} onChange={e => setNewProduct({...newProduct, description: e.target.value})}/>
-                          <button onClick={handleAddProduct} className="md:col-span-2 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus className="inline mr-2"/>Simpan Produk</button>
+                          <button onClick={handleAddProduct} className="md:col-span-2 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus className="inline mr-2"/>Simpan Produk Official</button>
                       </div>
                   </div>
 
@@ -296,6 +315,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                               <div className="flex-1 min-w-0">
                                   <h4 className="text-white font-bold text-sm truncate">{p.name}</h4>
                                   <p className="text-brand-400 font-bold text-xs">Rp {p.price.toLocaleString()}</p>
+                                  <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded uppercase">Official</span>
                               </div>
                               {/* FIX: Stop Propagation */}
                               <button onClick={(e) => handleDeleteProduct(e, p.id)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-all rounded-lg z-10">
@@ -355,7 +375,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: MEMBERS */}
+          {/* TAB: MEMBERS (UPDATED with UID & Details) */}
           {activeTab === 'members' && (
               <div className="animate-fade-in space-y-6">
                   <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
@@ -368,7 +388,8 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                               <thead className="bg-white/5 text-[10px] uppercase font-bold text-gray-500">
                                   <tr>
                                       <th className="p-4">User</th>
-                                      <th className="p-4">Email</th>
+                                      <th className="p-4">Credential (Private)</th>
+                                      <th className="p-4">UID System</th>
                                       <th className="p-4">Poin</th>
                                       <th className="p-4">Status</th>
                                       <th className="p-4 text-right">Aksi</th>
@@ -382,11 +403,19 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                                   <img src={m.avatar || "https://picsum.photos/40"} className="w-8 h-8 rounded-full border border-white/10"/>
                                                   <div>
                                                       <span className="text-white font-bold text-sm block">{m.username}</span>
-                                                      <span className="text-xs text-gray-500">Followers: {m.followers?.length || 0}</span>
+                                                      <span className="text-[10px] bg-brand-600/20 text-brand-400 px-1.5 py-0.5 rounded">Member</span>
                                                   </div>
                                               </div>
                                           </td>
-                                          <td className="p-4 text-gray-400 text-xs">{m.email}</td>
+                                          <td className="p-4 text-gray-400 text-xs">
+                                              <div className="flex flex-col gap-1">
+                                                  <span className="font-mono text-white">{m.email}</span>
+                                                  <span className="text-[10px] text-gray-600 flex items-center gap-1"><Ban size={10}/> Password Encrypted</span>
+                                              </div>
+                                          </td>
+                                          <td className="p-4">
+                                              <code className="text-[10px] bg-black/30 p-1 rounded text-gray-300 font-mono select-all">{m.id}</code>
+                                          </td>
                                           <td className="p-4 text-brand-400 font-bold">
                                               {m.points.toLocaleString()}
                                               <div className="flex gap-1 mt-1">
@@ -402,7 +431,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                           </td>
                                           <td className="p-4 text-right">
                                               <div className="flex justify-end gap-2">
-                                                  {/* FIX: Stop Propagation for Actions */}
                                                   <button onClick={(e) => handleUserAction(e, m.id, 'verify')} className={`p-2 rounded-lg ${m.isVerified ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-400'}`} title="Toggle Verifikasi"><CheckCircle size={14}/></button>
                                                   <button onClick={(e) => handleUserAction(e, m.id, 'ban')} className={`p-2 rounded-lg ${m.isBanned ? 'bg-red-500/20 text-red-500' : 'bg-gray-500/10 text-gray-400'}`} title="Ban/Unban"><Ban size={14}/></button>
                                                   <button onClick={(e) => handleUserAction(e, m.id, 'delete')} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white" title="Hapus"><Trash2 size={14}/></button>
@@ -411,7 +439,72 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                       </tr>
                                   ))}
                                   {members.length === 0 && (
-                                      <tr><td colSpan={5} className="p-10 text-center text-gray-500">Belum ada member terdaftar selain Admin.</td></tr>
+                                      <tr><td colSpan={6} className="p-10 text-center text-gray-500">Belum ada member terdaftar selain Admin.</td></tr>
+                                  )}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              </div>
+          )}
+          
+          {/* NEW TAB: STORES MANAGEMENT */}
+          {activeTab === 'stores' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
+                      <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                          <h3 className="text-white font-bold">Daftar Toko Member ({sellers.length})</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                              <thead className="bg-white/5 text-[10px] uppercase font-bold text-gray-500">
+                                  <tr>
+                                      <th className="p-4">Nama Toko</th>
+                                      <th className="p-4">Pemilik (User)</th>
+                                      <th className="p-4">Status</th>
+                                      <th className="p-4 text-right">Aksi</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                  {sellers.map(s => (
+                                      <tr key={s.id} className="hover:bg-white/5 transition-colors">
+                                          <td className="p-4">
+                                              <div className="flex items-center gap-3">
+                                                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Store size={20}/></div>
+                                                  <div>
+                                                      <span className="text-white font-bold text-sm block">{s.storeName}</span>
+                                                      <span className="text-[10px] text-gray-400">{s.storeDescription?.substring(0,30)}...</span>
+                                                  </div>
+                                              </div>
+                                          </td>
+                                          <td className="p-4">
+                                              <span className="text-white text-sm font-bold">{s.username}</span>
+                                              <div className="text-[10px] text-gray-500 font-mono">{s.email}</div>
+                                          </td>
+                                          <td className="p-4">
+                                              <span className={`px-2 py-1 rounded text-[10px] font-bold ${
+                                                  s.storeStatus === 'ACTIVE' ? 'bg-green-500/20 text-green-500' :
+                                                  s.storeStatus === 'SUSPENDED' ? 'bg-red-500/20 text-red-500' :
+                                                  'bg-yellow-500/20 text-yellow-500'
+                                              }`}>
+                                                  {s.storeStatus || 'PENDING'}
+                                              </span>
+                                          </td>
+                                          <td className="p-4 text-right">
+                                              <div className="flex justify-end gap-2">
+                                                  {s.storeStatus !== StoreStatus.ACTIVE && (
+                                                      <button onClick={() => handleStoreAction(s.id, 'VERIFY')} className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs rounded-lg">Verifikasi</button>
+                                                  )}
+                                                  {s.storeStatus !== StoreStatus.SUSPENDED && (
+                                                      <button onClick={() => handleStoreAction(s.id, 'SUSPEND')} className="px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white text-xs rounded-lg">Blokir</button>
+                                                  )}
+                                                  <button onClick={() => handleStoreAction(s.id, 'DELETE')} className="p-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg"><Trash2 size={14}/></button>
+                                              </div>
+                                          </td>
+                                      </tr>
+                                  ))}
+                                  {sellers.length === 0 && (
+                                      <tr><td colSpan={4} className="p-10 text-center text-gray-500">Belum ada member yang membuka toko.</td></tr>
                                   )}
                               </tbody>
                           </table>
