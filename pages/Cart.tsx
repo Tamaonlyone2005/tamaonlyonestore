@@ -219,7 +219,7 @@ const Cart: React.FC = () => {
                                 <AlertCircle size={20} className="text-yellow-500 shrink-0 mt-1"/>
                                 <div className="text-left">
                                     <p className="text-[11px] text-gray-300 leading-relaxed">
-                                        Simpan bukti transfer Anda. Pergi ke <b>Akun > Pesanan</b> untuk mengunggah bukti agar pesanan segera diproses.
+                                        Simpan bukti transfer Anda. Pergi ke <b>Akun &gt; Pesanan</b> untuk mengunggah bukti agar pesanan segera diproses.
                                     </p>
                                 </div>
                             </div>
