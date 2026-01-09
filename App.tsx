@@ -14,6 +14,7 @@ import PublicProfile from './pages/PublicProfile';
 import Community from './pages/Community';
 import Chat from './pages/Chat';
 import Cart from './pages/Cart';
+import OpenStore from './pages/OpenStore';
 import { ToastProvider } from './components/Toast';
 
 const App: React.FC = () => {
@@ -43,6 +44,7 @@ const App: React.FC = () => {
             <Route path="/u/:id" element={<PublicProfile />} />
             <Route path="/community" element={<Community />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/open-store" element={<OpenStore />} />
           </Routes>
         </Layout>
       </Router>

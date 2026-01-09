@@ -4,10 +4,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Menu, X, User as UserIcon, LogOut, Shield, MessageCircle, Bell, Gamepad2, Home, Search, ShoppingCart, Users } from 'lucide-react';
+import { Menu, X, User as UserIcon, LogOut, Shield, MessageCircle, Bell, Gamepad2, Home, Search, ShoppingCart, Users, Store, Globe } from 'lucide-react';
 import { APP_NAME, COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
-import BackToTop from './BackToTop'; // Import komponen baru
+import BackToTop from './BackToTop';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +21,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   const [cartCount, setCartCount] = useState(0);
   const [siteLogo, setSiteLogo] = useState<string>('');
   const [siteName, setSiteName] = useState<string>('Tamaonlyone Store');
+  
+  // Language State
+  const [lang, setLang] = useState<'ID' | 'EN'>('ID');
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -77,6 +80,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   const handleCsClick = () => {
      if(!user) navigate('/login'); else navigate('/chat?type=support');
   };
+  
+  const toggleLanguage = () => {
+      setLang(prev => prev === 'ID' ? 'EN' : 'ID');
+  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -86,6 +93,17 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         return <>{parts[0]}<span className="text-brand-500">Store</span>{parts.slice(1).join('Store')}</>;
     }
     return name;
+  };
+
+  // Translations Map (Simple)
+  const t = {
+      home: lang === 'ID' ? 'Home' : 'Home',
+      product: lang === 'ID' ? 'Produk' : 'Shop',
+      community: lang === 'ID' ? 'Komunitas' : 'Community',
+      store: lang === 'ID' ? 'Toko Saya' : 'My Store',
+      panel: lang === 'ID' ? 'Panel' : 'Admin',
+      login: lang === 'ID' ? 'Masuk' : 'Login',
+      signup: lang === 'ID' ? 'Daftar' : 'Sign Up'
   };
 
   return (
@@ -113,18 +131,22 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-1 items-center">
                 <Link to="/" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
-                  <Home size={18} /> Home
+                  <Home size={18} /> {t.home}
                 </Link>
                 <Link to="/shop" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/shop') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
-                  <Gamepad2 size={18} /> Produk
+                  <Gamepad2 size={18} /> {t.product}
                 </Link>
                 
-                {/* NEW: Community Link for Members */}
                 {user && user.role !== UserRole.ADMIN && (
                    <Link to="/community" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
-                     <Users size={18} /> Community
+                     <Users size={18} /> {t.community}
                    </Link>
                 )}
+                
+                {/* Language Switcher */}
+                <button onClick={toggleLanguage} className="ml-2 px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold flex items-center gap-2 text-gray-300 border border-white/5">
+                    <Globe size={14}/> {lang}
+                </button>
 
                 {user ? (
                   <div className="flex items-center gap-4 ml-6 pl-6 border-l border-white/10">
@@ -145,10 +167,17 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                             </span>
                         )}
                     </div>
+                    
+                    {/* Seller Menu */}
+                    {user.isSeller && (
+                         <Link to="/open-store" className="text-brand-400 hover:text-white flex items-center gap-1 font-bold text-sm bg-brand-500/10 px-3 py-1.5 rounded-lg border border-brand-500/20">
+                            <Store size={16} /> {t.store}
+                         </Link>
+                    )}
 
                     {user.role === UserRole.ADMIN && (
                       <Link to="/admin" className="text-gray-300 hover:text-brand-400 flex items-center gap-1 font-bold text-sm">
-                        <Shield size={16} /> Panel
+                        <Shield size={16} /> {t.panel}
                       </Link>
                     )}
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/profile')}>
@@ -162,8 +191,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 ml-6">
-                     <Link to="/login" className="text-gray-300 hover:text-white font-bold text-sm">Login</Link>
-                    <Link to="/register" className="bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg shadow-brand-500/25">Sign Up</Link>
+                     <Link to="/login" className="text-gray-300 hover:text-white font-bold text-sm">{t.login}</Link>
+                    <Link to="/register" className="bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg shadow-brand-500/25">{t.signup}</Link>
                   </div>
                 )}
               </div>
@@ -171,6 +200,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
 
             {/* Mobile menu button */}
             <div className="-mr-2 flex md:hidden items-center gap-4">
+                <button onClick={toggleLanguage} className="px-2 py-1 rounded bg-white/5 text-[10px] font-bold text-gray-300 border border-white/5">
+                    {lang}
+                </button>
                 {user && (
                     <Link to="/cart" className="relative p-2 text-gray-300">
                         <ShoppingCart size={24} />
@@ -190,11 +222,16 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         {isMenuOpen && (
           <div className="md:hidden bg-[#1e293b] border-b border-white/10 animate-slide-up">
             <div className="px-4 pt-2 pb-4 space-y-2">
-              <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Home</Link>
-              <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Katalog Produk</Link>
+              <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">{t.home}</Link>
+              <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">{t.product}</Link>
               {user && user.role !== UserRole.ADMIN && (
-                   <Link to="/community" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Community</Link>
+                   <Link to="/community" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">{t.community}</Link>
               )}
+              
+              {user?.isSeller && (
+                  <Link to="/open-store" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">{t.store}</Link>
+              )}
+              
               {user?.role === UserRole.ADMIN && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Admin Panel</Link>}
               
               {user ? (
@@ -213,8 +250,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                 </>
               ) : (
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-white/5 text-white">Login</Link>
-                  <Link to="/register" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-brand-600 text-white">Sign Up</Link>
+                  <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-white/5 text-white">{t.login}</Link>
+                  <Link to="/register" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-brand-600 text-white">{t.signup}</Link>
                 </div>
               )}
             </div>

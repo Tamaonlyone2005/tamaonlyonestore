@@ -9,7 +9,7 @@ export const PAYMENT_CONFIG = {
   qrisImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/QR_code_for_mobile_English_Wikipedia.svg/1200px-QR_code_for_mobile_English_Wikipedia.svg.png", // GANTI dengan link foto QRIS Anda
   bankName: "DANA / BCA / MANDIRI",
   accountNumber: "0812XXXXXX / 12345678",
-  accountHolder: "NAMA ANDA"
+  accountHolder: "TAMA ONLY ONE"
 };
 
 export const DEFAULT_PROFILE = {
@@ -21,7 +21,8 @@ export const DEFAULT_PROFILE = {
     facebook: "https://facebook.com",
     instagram: "https://instagram.com",
     discord: "https://discord.com",
-    whatsapp: "https://wa.me/"
+    whatsapp: "https://wa.me/6281234567890", // Ganti dengan nomor WA Bisnis Asli
+    email: "support@tamaonlyonestore.my.id" // Disiapkan untuk domain .my.id (Rp 10.000/thn)
   },
   isLocked: false,
   vipThresholds: {

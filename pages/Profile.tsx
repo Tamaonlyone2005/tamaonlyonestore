@@ -4,7 +4,7 @@ import { User, UserRole, PointHistory, Order, VipLevel, Product, OrderStatus, Ac
 import { StorageService } from '../services/storageService';
 import { AuthService } from '../services/authService';
 import { useNavigate } from 'react-router-dom';
-import { Save, Lock, User as UserIcon, Shield, Coins, Eye, EyeOff, Share2, BadgeCheck, Crown, MessageSquare, Download, Upload, Receipt, Heart, MessageCircle, Users, Activity, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Save, Lock, User as UserIcon, Shield, Coins, Eye, EyeOff, Share2, BadgeCheck, Crown, MessageSquare, Download, Upload, Receipt, Heart, MessageCircle, Users, Activity, Image as ImageIcon, Loader2, Store } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import UserAvatar from '../components/UserAvatar';
 import ProductCard from '../components/ProductCard';
@@ -212,7 +212,26 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                      )}
                     <div><label className="text-xs text-gray-500 block mb-1">Display Name</label><div className="text-white font-medium bg-dark-bg p-3 rounded-lg border border-white/10">{currentUser.username}</div></div>
                     <div><label className="text-xs text-gray-500 block mb-1">Email</label><div className="text-gray-300 font-medium bg-dark-bg p-3 rounded-lg border border-white/10">{currentUser.email}</div></div>
-                    {!isAdmin && <button onClick={() => navigate('/community')} className="w-full flex items-center justify-center gap-2 bg-brand-600/20 text-brand-400 py-3 rounded-xl font-bold border border-brand-500/20 transition-all mt-2 hover:bg-brand-600 hover:text-white"><Users size={18} /> Cari Teman (Community)</button>}
+                    
+                    {!isAdmin && (
+                        <>
+                            {/* Tombol Buka Toko jika belum seller */}
+                            {!currentUser.isSeller && (
+                                <button onClick={() => navigate('/open-store')} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl font-bold transition-all mt-4 hover:shadow-lg hover:scale-[1.02]">
+                                    <Store size={18} /> Buka Toko Gratis
+                                </button>
+                            )}
+                            
+                            {/* Tombol Ke Dashboard Toko jika sudah seller */}
+                            {currentUser.isSeller && (
+                                <button onClick={() => navigate('/open-store')} className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white py-3 rounded-xl font-bold transition-all mt-4 hover:bg-brand-500 border border-brand-400/20">
+                                    <Store size={18} /> Dashboard Toko Saya
+                                </button>
+                            )}
+
+                            <button onClick={() => navigate('/community')} className="w-full flex items-center justify-center gap-2 bg-white/5 text-brand-400 py-3 rounded-xl font-bold border border-white/10 transition-all mt-2 hover:bg-white/10"><Users size={18} /> Cari Teman (Community)</button>
+                        </>
+                    )}
                   </div>
                 </div>
                 <div className="bg-dark-card border border-white/5 rounded-2xl p-6">

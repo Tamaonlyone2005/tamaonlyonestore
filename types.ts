@@ -18,7 +18,7 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
-  banner?: string; // New: Banner Profil
+  banner?: string; 
   bio?: string; 
   points: number; 
   isVerified: boolean;
@@ -31,7 +31,13 @@ export interface User {
   wishlist: string[];
   lastLoginClaim?: string;
   followers: string[]; 
-  following: string[]; 
+  following: string[];
+  
+  // SELLER FIELDS
+  isSeller?: boolean;
+  storeName?: string;
+  storeDescription?: string;
+  storeRating?: number;
 }
 
 export interface ProductVariant {
@@ -62,7 +68,11 @@ export interface Product {
   isFlashSale?: boolean;
   discountPrice?: number;
   discountEndsAt?: string;
-  downloadUrl?: string; 
+  downloadUrl?: string;
+  
+  // SELLER FIELDS
+  sellerId?: string; // If undefined, it's Admin/Official
+  sellerName?: string;
 }
 
 export interface CartItem {
