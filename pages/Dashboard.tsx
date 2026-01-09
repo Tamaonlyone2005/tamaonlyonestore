@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
 import { Product, User, UserRole, Order, ActivityLog, OrderStatus, VipLevel, Coupon, ProductType, SiteProfile, StoreStatus, Report } from '../types';
-import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, AlertTriangle, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -56,8 +56,10 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       return;
     }
     
-    fetchStaticData();
+    // Initial Fetch
+    refreshData();
     
+    // Realtime Orders subscription
     const unsubscribeOrders = StorageService.subscribeToOrders((updatedOrders) => {
         setOrders(updatedOrders);
         const rev = updatedOrders.filter(x => x.status === OrderStatus.COMPLETED).reduce((acc, curr) => acc + curr.price, 0);
@@ -77,6 +79,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchStaticData = async () => {
     try {
+        // Force fetch all collections
         const [p, allUsers, l, c, rep, prof] = await Promise.all([
             StorageService.getProducts(),
             StorageService.getUsers(),
@@ -95,7 +98,10 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
         setReports(rep);
         setSiteProfile(prof);
         setStats(prev => ({ ...prev, totalMembers: onlyMembers.length }));
-    } catch (err) {}
+    } catch (err) {
+        console.error("Dashboard Fetch Error:", err);
+        addToast("Gagal memuat beberapa data dashboard.", "error");
+    }
   };
   
   const refreshData = async () => {
@@ -186,7 +192,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       refreshData();
   };
   
-  // NEW: Manage Points using 6-Digit UID
+  // NEW: Manage Points using Firebase UID
   const handleManagePointsByUID = async (type: 'ADD' | 'SUBTRACT') => {
       if(!pointUid || !pointAmount) return addToast("Isi UID dan Jumlah", "error");
       const targetUser = await StorageService.findUser(pointUid);
@@ -239,6 +245,11 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       await StorageService.deleteReport(id);
       setReports(prev => prev.filter(r => r.id !== id));
       addToast("Laporan dihapus", "info");
+  };
+
+  const copyToClipboard = (text: string) => {
+      navigator.clipboard.writeText(text);
+      addToast("UID disalin!", "info");
   };
 
   return (
@@ -296,23 +307,8 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                       <StatCard title="Member" value={stats.totalMembers.toString()} icon={Users} color="blue" />
                       <StatCard title="Total Order" value={stats.totalOrders.toString()} icon={CheckCircle} color="purple" />
                   </div>
-
-                  {/* POINTS MANAGER */}
-                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
-                      <h3 className="text-white font-bold mb-6 flex items-center gap-2"><Coins className="text-yellow-500"/> Kelola Poin Member</h3>
-                      <div className="flex flex-col md:flex-row gap-4 items-end">
-                          <div className="flex-1 w-full">
-                              <label className="block text-xs text-gray-400 mb-1">UID Member (6 Angka)</label>
-                              <input placeholder="Contoh: 123456" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointUid} onChange={e => setPointUid(e.target.value)}/>
-                          </div>
-                          <div className="flex-1 w-full">
-                              <label className="block text-xs text-gray-400 mb-1">Jumlah Poin</label>
-                              <input type="number" placeholder="0" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointAmount} onChange={e => setPointAmount(e.target.value)}/>
-                          </div>
-                          <button onClick={() => handleManagePointsByUID('ADD')} className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold">Tambah</button>
-                          <button onClick={() => handleManagePointsByUID('SUBTRACT')} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold">Tarik</button>
-                      </div>
-                  </div>
+                  
+                  {/* Overview now is pure stats, removed activity log here to clean up */}
               </div>
           )}
 
@@ -363,9 +359,142 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: COUPONS */}
+          {/* TAB: ORDERS - Fixed Empty State */}
+          {activeTab === 'orders' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="flex items-center gap-4 bg-dark-card p-4 rounded-2xl border border-white/5">
+                      <Search className="text-gray-500" size={20}/>
+                      <input placeholder="Cari ID Transaksi atau Nama User..." className="bg-transparent border-none outline-none text-white w-full" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
+                  </div>
+                  
+                  {orders.length === 0 ? (
+                      <div className="bg-dark-card p-10 rounded-3xl text-center text-gray-500 border border-white/5">
+                          <ShoppingCart size={40} className="mx-auto mb-4 opacity-20"/>
+                          <p>Belum ada pesanan masuk.</p>
+                      </div>
+                  ) : (
+                      <div className="space-y-4">
+                          {orders.filter(o => o.id.includes(searchTerm) || o.username.toLowerCase().includes(searchTerm.toLowerCase())).map(order => (
+                              <div key={order.id} className="bg-dark-card border border-white/5 p-6 rounded-3xl flex flex-col md:flex-row justify-between gap-6 hover:border-brand-500/30 transition-all">
+                                  <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-2">
+                                          <span className="text-brand-400 font-mono text-xs">#{order.id}</span>
+                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${order.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'}`}>{order.status}</span>
+                                          {order.paymentProof && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 rounded flex items-center gap-1"><ImageIcon size={10}/> Bukti Ada</span>}
+                                      </div>
+                                      <h3 className="text-white font-bold text-lg">{order.productName}</h3>
+                                      <p className="text-gray-400 text-sm">{order.username} • {order.whatsapp}</p>
+                                      <div className="mt-3 flex gap-2 flex-wrap">
+                                          {order.gameData && Object.entries(order.gameData).map(([k,v]) => (
+                                              <span key={k} className="bg-white/5 border border-white/10 px-2 py-1 rounded text-[10px] text-gray-300">{k}: {v}</span>
+                                          ))}
+                                      </div>
+                                      {order.paymentProof && (
+                                          <div className="mt-3">
+                                              <a href={order.paymentProof} target="_blank" className="text-xs text-blue-400 hover:underline">Lihat Bukti Pembayaran</a>
+                                          </div>
+                                      )}
+                                  </div>
+                                  <div className="flex flex-col justify-between items-end gap-4">
+                                      <div className="text-right">
+                                          <p className="text-white font-bold text-xl">Rp {order.price.toLocaleString()}</p>
+                                          <p className="text-[10px] text-gray-500">{new Date(order.createdAt).toLocaleString()}</p>
+                                      </div>
+                                      <div className="flex gap-2">
+                                          {order.status === OrderStatus.PENDING && <button onClick={() => handleOrderStatus(order.id, OrderStatus.PROCESSED)} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Proses</button>}
+                                          {order.status === OrderStatus.PROCESSED && <button onClick={() => handleOrderStatus(order.id, OrderStatus.COMPLETED)} className="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Selesai</button>}
+                                          <button onClick={() => handleOrderStatus(order.id, OrderStatus.CANCELLED)} className="bg-red-500/10 text-red-500 px-4 py-2 rounded-xl text-xs font-bold">Batal</button>
+                                      </div>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+              </div>
+          )}
+
+          {/* TAB: MEMBERS */}
+          {activeTab === 'members' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
+                      <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                          <h3 className="text-white font-bold">Daftar Member Terdaftar ({members.length})</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                              <thead className="bg-white/5 text-[10px] uppercase font-bold text-gray-500">
+                                  <tr>
+                                      <th className="p-4">User</th>
+                                      <th className="p-4">UID (Untuk Poin)</th>
+                                      <th className="p-4">Poin</th>
+                                      <th className="p-4">Status</th>
+                                      <th className="p-4 text-right">Aksi</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                  {members.map(m => (
+                                      <tr key={m.id} className="hover:bg-white/5 transition-colors">
+                                          <td className="p-4">
+                                              <div className="flex items-center gap-3">
+                                                  <img src={m.avatar || "https://picsum.photos/40"} className="w-8 h-8 rounded-full border border-white/10"/>
+                                                  <div>
+                                                      <span className="text-white font-bold text-sm block">{m.username}</span>
+                                                      <span className="text-[10px] bg-brand-600/20 text-brand-400 px-1.5 py-0.5 rounded">Member</span>
+                                                  </div>
+                                              </div>
+                                          </td>
+                                          <td className="p-4">
+                                              {/* SHOW FIREBASE UID */}
+                                              <div className="flex items-center gap-2">
+                                                  <code className="text-[10px] bg-black/30 p-1 rounded text-gray-300 font-mono truncate max-w-[100px]" title={m.id}>{m.id}</code>
+                                                  <button onClick={() => copyToClipboard(m.id)} className="text-gray-500 hover:text-white p-1 rounded"><Copy size={12}/></button>
+                                              </div>
+                                          </td>
+                                          <td className="p-4 text-brand-400 font-bold">
+                                              {m.points.toLocaleString()}
+                                          </td>
+                                          <td className="p-4">
+                                              <div className="flex gap-2">
+                                                  {m.isVerified ? <BadgeCheck className="text-green-500" size={16}/> : <X className="text-gray-600" size={16}/>}
+                                                  {m.isBanned && <Ban className="text-red-500" size={16}/>}
+                                              </div>
+                                          </td>
+                                          <td className="p-4 text-right">
+                                              <div className="flex justify-end gap-2">
+                                                  <button onClick={(e) => handleUserAction(e, m.id, 'verify')} className={`p-2 rounded-lg ${m.isVerified ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-400'}`} title="Toggle Verifikasi"><CheckCircle size={14}/></button>
+                                                  <button onClick={(e) => handleUserAction(e, m.id, 'ban')} className={`p-2 rounded-lg ${m.isBanned ? 'bg-red-500/20 text-red-500' : 'bg-gray-500/10 text-gray-400'}`} title="Ban/Unban"><Ban size={14}/></button>
+                                                  <button onClick={(e) => handleUserAction(e, m.id, 'delete')} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white" title="Hapus"><Trash2 size={14}/></button>
+                                              </div>
+                                          </td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* TAB: COUPONS & PROMO */}
           {activeTab === 'coupons' && (
               <div className="animate-fade-in space-y-8">
+                  {/* POINTS MANAGER MOVED HERE */}
+                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8 mb-8">
+                      <h3 className="text-white font-bold mb-6 flex items-center gap-2"><Coins className="text-yellow-500"/> Kelola Poin Member</h3>
+                      <div className="flex flex-col md:flex-row gap-4 items-end">
+                          <div className="flex-1 w-full">
+                              <label className="block text-xs text-gray-400 mb-1">UID Member (Copy dari Daftar Member)</label>
+                              <input placeholder="Tempel UID disini..." className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointUid} onChange={e => setPointUid(e.target.value)}/>
+                          </div>
+                          <div className="flex-1 w-full">
+                              <label className="block text-xs text-gray-400 mb-1">Jumlah Poin</label>
+                              <input type="number" placeholder="0" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointAmount} onChange={e => setPointAmount(e.target.value)}/>
+                          </div>
+                          <button onClick={() => handleManagePointsByUID('ADD')} className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold">Tambah</button>
+                          <button onClick={() => handleManagePointsByUID('SUBTRACT')} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold">Tarik</button>
+                      </div>
+                  </div>
+
                   <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
                       <h3 className="text-xl font-bold text-white mb-6">Buat Kupon Baru</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -442,7 +571,13 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                               <div className="flex items-center gap-3">
                                                   <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Store size={20}/></div>
                                                   <div>
-                                                      <span className="text-white font-bold text-sm block">{s.storeName}</span>
+                                                      <span className="text-white font-bold text-sm flex items-center gap-1">
+                                                          {s.storeName}
+                                                          {/* VERIFICATION BADGE */}
+                                                          {s.storeStatus === StoreStatus.ACTIVE && (
+                                                              <BadgeCheck size={14} className="text-orange-500 fill-current"/>
+                                                          )}
+                                                      </span>
                                                       <span className="text-[10px] text-gray-400">{s.storeDescription?.substring(0,30)}...</span>
                                                   </div>
                                               </div>
@@ -486,8 +621,25 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* ... (Existing Tabs: Members, Orders, Logs, Settings) ... */}
-          {/* Keep Maintenance Mode Toggle in Settings */}
+           {activeTab === 'logs' && (
+              <div className="animate-fade-in bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
+                  <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                      <h3 className="text-white font-bold">Audit Logs (System History)</h3>
+                      <button onClick={refreshData} className="text-xs text-brand-400 font-bold">Refresh</button>
+                  </div>
+                  <div className="p-6 space-y-2">
+                      {logs.length === 0 ? <p className="text-gray-500 text-center">Log kosong.</p> : logs.map(l => (
+                          <div key={l.id} className="text-[11px] font-mono border-b border-white/5 pb-2 flex gap-4">
+                              <span className="text-gray-600 min-w-[140px]">[{new Date(l.timestamp).toLocaleString()}]</span>
+                              <span className="text-brand-500 font-bold">{l.username}</span>
+                              <span className="text-white"><span className="text-yellow-500 font-bold">[{l.action}]</span> {l.details}</span>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+          )}
+          
+          {/* TAB: SETTINGS WITH MAINTENANCE TOGGLE */}
           {activeTab === 'settings' && siteProfile && (
             <div className="animate-fade-in space-y-8">
                 <div className="bg-dark-card border border-white/5 rounded-3xl p-8">

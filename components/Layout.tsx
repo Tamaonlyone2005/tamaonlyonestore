@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Menu, X, User as UserIcon, LogOut, Shield, MessageCircle, Bell, Gamepad2, Home, Search, ShoppingCart, Users, Store, Globe } from 'lucide-react';
+import { Menu, X, User as UserIcon, LogOut, Shield, Headset, Bell, Gamepad2, Home, Search, ShoppingCart, Users, Store, Globe } from 'lucide-react';
 import { APP_NAME, COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
@@ -279,7 +279,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
 
       {/* CS Button */}
       <button onClick={handleCsClick} className="fixed bottom-20 md:bottom-6 right-6 z-50 p-4 bg-green-600 hover:bg-green-500 text-white rounded-full shadow-lg hover:scale-110 transition-all border-4 border-[#0f172a]">
-        <MessageCircle size={26} />
+        <Headset size={26} />
       </button>
 
       {/* Tombol Back to Top baru */}
