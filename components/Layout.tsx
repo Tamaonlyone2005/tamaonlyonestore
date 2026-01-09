@@ -7,6 +7,7 @@ import { StorageService } from '../services/storageService';
 import { Menu, X, User as UserIcon, LogOut, Shield, MessageCircle, Bell, Gamepad2, Home, Search, ShoppingCart, Users } from 'lucide-react';
 import { APP_NAME, COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
+import BackToTop from './BackToTop'; // Import komponen baru
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -262,6 +263,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
       <button onClick={handleCsClick} className="fixed bottom-20 md:bottom-6 right-6 z-50 p-4 bg-green-600 hover:bg-green-500 text-white rounded-full shadow-lg hover:scale-110 transition-all border-4 border-[#0f172a]">
         <MessageCircle size={26} />
       </button>
+
+      {/* Tombol Back to Top baru */}
+      <BackToTop />
 
       <BottomNav />
     </div>
