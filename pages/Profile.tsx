@@ -141,50 +141,61 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           
           {/* LEFT SIDEBAR: PROFILE & NAVIGATION */}
           <div className="lg:col-span-1 space-y-6">
-              {/* User Card */}
-              <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden shadow-xl text-center relative group/banner">
-                  {/* Banner */}
-                  <div className="relative h-24 bg-gradient-to-br from-brand-900 to-purple-900">
-                      {currentUser.banner && <img src={currentUser.banner} className="w-full h-full object-cover opacity-80"/>}
-                      {/* Banner Upload Trigger */}
-                      <label className="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white cursor-pointer opacity-0 group-hover/banner:opacity-100 transition-opacity">
-                          {isUploadingBanner ? <Loader2 size={14} className="animate-spin"/> : <ImageIcon size={14}/>}
-                          <input type="file" className="hidden" accept="image/*" onChange={handleBannerUpload} disabled={isUploadingBanner}/>
-                      </label>
-                  </div>
+              {/* User Card - Full Banner Style */}
+              <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden shadow-xl text-center relative group/banner min-h-[320px] flex flex-col justify-center">
                   
-                  <div className="relative z-10 px-6 pb-6 -mt-10">
-                      <div className="relative inline-block mx-auto mb-3">
-                          <UserAvatar user={currentUser} size="xl" className="border-4 border-dark-card shadow-xl"/>
+                  {/* Full Background Banner */}
+                  <div className="absolute inset-0 z-0">
+                      {currentUser.banner ? (
+                          <img src={currentUser.banner} className="w-full h-full object-cover transition-transform duration-700 group-hover/banner:scale-105"/>
+                      ) : (
+                          <div className="w-full h-full bg-gradient-to-b from-brand-900 via-[#1e293b] to-[#0f172a]"></div>
+                      )}
+                      {/* Gradient Overlay for Readability */}
+                      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-black/30"></div>
+                  </div>
+
+                  {/* Banner Upload Trigger (Top Right) */}
+                  <label className="absolute top-4 right-4 z-20 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white cursor-pointer opacity-0 group-hover/banner:opacity-100 transition-all backdrop-blur-md border border-white/10 hover:scale-110">
+                      {isUploadingBanner ? <Loader2 size={16} className="animate-spin"/> : <ImageIcon size={16}/>}
+                      <input type="file" className="hidden" accept="image/*" onChange={handleBannerUpload} disabled={isUploadingBanner}/>
+                  </label>
+                  
+                  {/* Profile Content (Sitting on top of banner) */}
+                  <div className="relative z-10 px-6 py-8 flex flex-col items-center">
+                      <div className="relative inline-block mb-4">
+                          <UserAvatar user={currentUser} size="xl" className="border-4 border-white/10 shadow-2xl ring-4 ring-black/20"/>
                           
                           {/* Avatar Controls */}
-                          <div className="absolute bottom-0 right-0 flex gap-1">
-                              <label className="p-1.5 bg-brand-600 hover:bg-brand-500 rounded-full text-white cursor-pointer shadow-lg transition-colors border border-dark-card">
-                                  {isUploadingAvatar ? <Loader2 size={12} className="animate-spin"/> : <Camera size={12}/>}
+                          <div className="absolute bottom-0 right-0 flex gap-2 translate-y-1/2">
+                              <label className="p-2 bg-brand-600 hover:bg-brand-500 rounded-full text-white cursor-pointer shadow-lg transition-colors border-2 border-[#1e293b] hover:scale-110">
+                                  {isUploadingAvatar ? <Loader2 size={14} className="animate-spin"/> : <Camera size={14}/>}
                                   <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={isUploadingAvatar}/>
                               </label>
                               {currentUser.avatar && (
-                                  <button onClick={handleDeleteAvatar} className="p-1.5 bg-red-600 hover:bg-red-500 rounded-full text-white shadow-lg transition-colors border border-dark-card">
-                                      <Trash2 size={12}/>
+                                  <button onClick={handleDeleteAvatar} className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white shadow-lg transition-colors border-2 border-[#1e293b] hover:scale-110">
+                                      <Trash2 size={14}/>
                                   </button>
                               )}
                           </div>
                       </div>
 
-                      <h2 className="text-xl font-bold text-white flex items-center justify-center gap-2">
+                      <h2 className="text-2xl font-black text-white flex items-center justify-center gap-2 mt-4 drop-shadow-md tracking-tight">
                           {currentUser.username}
-                          {currentUser.isVerified && <BadgeCheck size={18} className="text-green-500 fill-current"/>}
+                          {currentUser.isVerified && <BadgeCheck size={22} className="text-green-400 fill-current drop-shadow-sm"/>}
                       </h2>
-                      {/* Email and UID removed from display as per request */}
-
-                      {/* Points Summary (if not admin) */}
+                      
+                      {/* Points Summary (Glassmorphism Card) */}
                       {!isAdmin && (
-                          <div className="bg-white/5 rounded-2xl p-4 mt-4 border border-white/5">
-                              <div className="flex items-center justify-center gap-2 text-yellow-500 mb-1">
-                                  <Coins size={18}/>
-                                  <span className="font-bold text-lg">{currentUser.points.toLocaleString()}</span>
+                          <div className="w-full bg-white/10 backdrop-blur-md rounded-2xl p-4 mt-6 border border-white/10 shadow-xl ring-1 ring-white/5">
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                  <div className="flex items-center gap-2 text-yellow-400 drop-shadow-sm">
+                                      <Coins size={24} className="fill-yellow-500 text-yellow-200"/>
+                                      <span className="font-extrabold text-3xl tracking-tight">{currentUser.points.toLocaleString()}</span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-200 font-bold uppercase tracking-widest opacity-90">Total Poin Saya</p>
                               </div>
-                              <p className="text-xs text-gray-500">Total Poin Saya</p>
                           </div>
                       )}
                   </div>
