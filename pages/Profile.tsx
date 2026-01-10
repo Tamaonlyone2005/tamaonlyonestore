@@ -27,6 +27,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -84,6 +85,24 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       }
   };
 
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if(!file || !currentUser) return;
+
+      setIsUploadingBanner(true);
+      try {
+          const compressed = await StorageService.compressImage(file, 500);
+          const updatedUser = { ...currentUser, banner: compressed };
+          await StorageService.saveUser(updatedUser);
+          setCurrentUser(updatedUser);
+          addToast("Banner profil diperbarui!", "success");
+      } catch (error) {
+          addToast("Gagal upload banner.", "error");
+      } finally {
+          setIsUploadingBanner(false);
+      }
+  };
+
   const handleDeleteAvatar = async () => {
       if(!currentUser) return;
       if(confirm("Hapus foto profil?")) {
@@ -123,11 +142,19 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           {/* LEFT SIDEBAR: PROFILE & NAVIGATION */}
           <div className="lg:col-span-1 space-y-6">
               {/* User Card */}
-              <div className="bg-dark-card border border-white/5 rounded-3xl p-6 text-center relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-brand-900 to-purple-900 -z-0"></div>
+              <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden shadow-xl text-center relative group/banner">
+                  {/* Banner */}
+                  <div className="relative h-24 bg-gradient-to-br from-brand-900 to-purple-900">
+                      {currentUser.banner && <img src={currentUser.banner} className="w-full h-full object-cover opacity-80"/>}
+                      {/* Banner Upload Trigger */}
+                      <label className="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white cursor-pointer opacity-0 group-hover/banner:opacity-100 transition-opacity">
+                          {isUploadingBanner ? <Loader2 size={14} className="animate-spin"/> : <ImageIcon size={14}/>}
+                          <input type="file" className="hidden" accept="image/*" onChange={handleBannerUpload} disabled={isUploadingBanner}/>
+                      </label>
+                  </div>
                   
-                  <div className="relative z-10">
-                      <div className="relative inline-block mx-auto mb-4">
+                  <div className="relative z-10 px-6 pb-6 -mt-10">
+                      <div className="relative inline-block mx-auto mb-3">
                           <UserAvatar user={currentUser} size="xl" className="border-4 border-dark-card shadow-xl"/>
                           
                           {/* Avatar Controls */}
@@ -148,17 +175,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                           {currentUser.username}
                           {currentUser.isVerified && <BadgeCheck size={18} className="text-green-500 fill-current"/>}
                       </h2>
-                      <p className="text-gray-400 text-sm mb-4">{currentUser.email}</p>
-                      
-                      {/* UID Display */}
-                      <div className="inline-block bg-black/30 rounded-lg px-3 py-1.5 mb-4 border border-white/5">
-                          <span className="text-xs text-gray-500 uppercase font-bold block">UID</span>
-                          <span className="text-sm font-mono text-brand-400 font-bold">{currentUser.shortId || 'N/A'}</span>
-                      </div>
+                      {/* Email and UID removed from display as per request */}
 
                       {/* Points Summary (if not admin) */}
                       {!isAdmin && (
-                          <div className="bg-white/5 rounded-2xl p-4 mb-4 border border-white/5">
+                          <div className="bg-white/5 rounded-2xl p-4 mt-4 border border-white/5">
                               <div className="flex items-center justify-center gap-2 text-yellow-500 mb-1">
                                   <Coins size={18}/>
                                   <span className="font-bold text-lg">{currentUser.points.toLocaleString()}</span>

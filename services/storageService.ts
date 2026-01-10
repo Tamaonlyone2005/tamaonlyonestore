@@ -156,8 +156,8 @@ export const StorageService = {
   deleteUser: async (id: string) => { await deleteDocument('users', id); },
   findUser: async (identifier: string): Promise<User | undefined> => {
       const users = await StorageService.getUsers();
-      // Support ID, Username, or ShortID (6 digits)
-      return users.find(u => u.id === identifier || u.username === identifier || u.shortId === identifier);
+      // Support ID or Username only (removed shortId)
+      return users.find(u => u.id === identifier || u.username === identifier);
   },
   
   registerSeller: async (userId: string, storeName: string, description: string) => {
@@ -183,6 +183,15 @@ export const StorageService = {
       user.storeStatus = status;
       await StorageService.saveUser(user);
       await StorageService.logActivity(ADMIN_ID, "Administrator", "STORE_UPDATE", `Mengubah status toko ${user.storeName} menjadi ${status}`);
+  },
+  
+  updateStoreExp: async (userId: string, exp: number, level: number) => {
+      const user = await StorageService.findUser(userId);
+      if(!user || !user.isSeller) return;
+      user.storeExp = exp;
+      user.storeLevel = level;
+      await StorageService.saveUser(user);
+      await StorageService.logActivity(ADMIN_ID, "Administrator", "STORE_LEVEL_UPDATE", `Update manual level toko ${user.storeName} ke Level ${level}`);
   },
   
   deleteStore: async (userId: string) => {
@@ -276,7 +285,9 @@ export const StorageService = {
   // Combine Admin products (Top) and Seller products (Bottom)
   getGlobalProducts: async (): Promise<Product[]> => {
       const all = await StorageService.getProducts();
+      // Admin products first (no sellerId)
       const adminProducts = all.filter(p => !p.sellerId);
+      // Member products (sorted by id/date desc usually)
       const sellerProducts = all.filter(p => p.sellerId);
       return [...adminProducts, ...sellerProducts];
   },
@@ -288,6 +299,17 @@ export const StorageService = {
 
   saveProduct: async (product: Product) => { await setDocument('products', product.id, product); },
   deleteProduct: async (id: string) => { await deleteDocument('products', id); },
+  
+  toggleProductBoost: async (productId: string, isBoosted: boolean) => {
+      if (isRemoteEnabled && db) {
+          try {
+              const productRef = doc(db, 'products', productId);
+              await updateDoc(productRef, { isBoosted });
+          } catch(e) { handleRemoteError(e); }
+      }
+      // Log for admin
+      await StorageService.logActivity(ADMIN_ID, "Administrator", "PRODUCT_BOOST", `Mengubah status boost produk ${productId} menjadi ${isBoosted}`);
+  },
 
   getOrders: async (): Promise<Order[]> => {
       return await getCollection<Order>('orders');

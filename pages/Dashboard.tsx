@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
 import { Product, User, UserRole, Order, ActivityLog, OrderStatus, VipLevel, Coupon, ProductType, SiteProfile, StoreStatus, Report } from '../types';
-import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, AlertTriangle, Copy } from 'lucide-react';
+import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, AlertTriangle, Copy, Zap, ArrowUpCircle, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -27,6 +27,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   
   // Data States
   const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // Store both admin & member
   const [members, setMembers] = useState<User[]>([]);
   const [sellers, setSellers] = useState<User[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -40,6 +41,13 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   
+  // Store Management State
+  const [selectedStoreProducts, setSelectedStoreProducts] = useState<Product[]>([]);
+  const [viewingStoreId, setViewingStoreId] = useState<string | null>(null);
+  const [manualExpId, setManualExpId] = useState<string | null>(null);
+  const [manualExpVal, setManualExpVal] = useState('');
+  const [manualLevelVal, setManualLevelVal] = useState('');
+
   // Points Management State
   const [pointUid, setPointUid] = useState('');
   const [pointAmount, setPointAmount] = useState('');
@@ -56,10 +64,8 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       return;
     }
     
-    // Initial Fetch
     refreshData();
     
-    // Realtime Orders subscription
     const unsubscribeOrders = StorageService.subscribeToOrders((updatedOrders) => {
         setOrders(updatedOrders);
         const rev = updatedOrders.filter(x => x.status === OrderStatus.COMPLETED).reduce((acc, curr) => acc + curr.price, 0);
@@ -79,7 +85,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchStaticData = async () => {
     try {
-        // Force fetch all collections
         const [p, allUsers, l, c, rep, prof] = await Promise.all([
             StorageService.getProducts(),
             StorageService.getUsers(),
@@ -89,7 +94,9 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             StorageService.getProfile()
         ]);
         
-        setProducts(p.filter(prod => !prod.sellerId));
+        setAllProducts(p); // ALL products
+        setProducts(p.filter(prod => !prod.sellerId)); // Only Admin products for "Products" tab
+        
         const onlyMembers = allUsers.filter(u => u.role !== UserRole.ADMIN);
         setMembers(onlyMembers);
         setSellers(onlyMembers.filter(u => u.isSeller));
@@ -99,7 +106,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
         setSiteProfile(prof);
         setStats(prev => ({ ...prev, totalMembers: onlyMembers.length }));
     } catch (err) {
-        console.error("Dashboard Fetch Error:", err);
         addToast("Gagal memuat beberapa data dashboard.", "error");
     }
   };
@@ -149,8 +155,18 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
     if (confirm("Hapus produk ini?")) {
       await StorageService.deleteProduct(id);
       addToast("Produk dihapus", "info");
-      setProducts(prev => prev.filter(p => p.id !== id));
+      refreshData();
     }
+  };
+  
+  const handleToggleBoost = async (product: Product) => {
+      await StorageService.toggleProductBoost(product.id, !product.isBoosted);
+      addToast(`Status Boost produk diperbarui!`, "success");
+      refreshData();
+      if(viewingStoreId) {
+          // Update local view state if viewing a store
+          setSelectedStoreProducts(prev => prev.map(p => p.id === product.id ? {...p, isBoosted: !p.isBoosted} : p));
+      }
   };
 
   const handleOrderStatus = async (orderId: string, status: OrderStatus) => {
@@ -192,7 +208,24 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       refreshData();
   };
   
-  // NEW: Manage Points using Firebase UID
+  const handleViewStoreProducts = (sellerId: string) => {
+      if (viewingStoreId === sellerId) {
+          setViewingStoreId(null);
+          setSelectedStoreProducts([]);
+      } else {
+          setViewingStoreId(sellerId);
+          setSelectedStoreProducts(allProducts.filter(p => p.sellerId === sellerId));
+      }
+  };
+  
+  const handleUpdateStoreLevel = async () => {
+      if(!manualExpId) return;
+      await StorageService.updateStoreExp(manualExpId, Number(manualExpVal), Number(manualLevelVal));
+      addToast("Level toko diperbarui!", "success");
+      setManualExpId(null);
+      refreshData();
+  };
+  
   const handleManagePointsByUID = async (type: 'ADD' | 'SUBTRACT') => {
       if(!pointUid || !pointAmount) return addToast("Isi UID dan Jumlah", "error");
       const targetUser = await StorageService.findUser(pointUid);
@@ -216,7 +249,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       }
   };
 
-  // COUPON HANDLER
   const handleAddCoupon = async () => {
       if(!newCoupon.code || !newCoupon.discountAmount) return addToast("Lengkapi data kupon", "error");
       const coupon: Coupon = {
@@ -307,8 +339,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                       <StatCard title="Member" value={stats.totalMembers.toString()} icon={Users} color="blue" />
                       <StatCard title="Total Order" value={stats.totalOrders.toString()} icon={CheckCircle} color="purple" />
                   </div>
-                  
-                  {/* Overview now is pure stats, removed activity log here to clean up */}
               </div>
           )}
 
@@ -359,7 +389,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: ORDERS - Fixed Empty State */}
+          {/* TAB: ORDERS */}
           {activeTab === 'orders' && (
               <div className="animate-fade-in space-y-6">
                   <div className="flex items-center gap-4 bg-dark-card p-4 rounded-2xl border border-white/5">
@@ -478,7 +508,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
           {/* TAB: COUPONS & PROMO */}
           {activeTab === 'coupons' && (
               <div className="animate-fade-in space-y-8">
-                  {/* POINTS MANAGER MOVED HERE */}
+                  {/* POINTS MANAGER */}
                   <div className="bg-dark-card border border-white/5 rounded-3xl p-8 mb-8">
                       <h3 className="text-white font-bold mb-6 flex items-center gap-2"><Coins className="text-yellow-500"/> Kelola Poin Member</h3>
                       <div className="flex flex-col md:flex-row gap-4 items-end">
@@ -546,9 +576,25 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: STORES */}
+          {/* TAB: STORES - Updated with Product Management */}
           {activeTab === 'stores' && (
               <div className="animate-fade-in space-y-6">
+                  {manualExpId && (
+                      <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+                          <div className="bg-dark-card p-6 rounded-2xl border border-white/10 w-full max-w-sm">
+                              <h3 className="text-white font-bold mb-4">Update Level Toko Manual</h3>
+                              <div className="space-y-4">
+                                  <input type="number" placeholder="New Level (1-5)" className="w-full bg-dark-bg p-3 rounded-xl border border-white/10 text-white" value={manualLevelVal} onChange={e=>setManualLevelVal(e.target.value)}/>
+                                  <input type="number" placeholder="New EXP" className="w-full bg-dark-bg p-3 rounded-xl border border-white/10 text-white" value={manualExpVal} onChange={e=>setManualExpVal(e.target.value)}/>
+                                  <div className="flex gap-2">
+                                      <button onClick={() => setManualExpId(null)} className="flex-1 py-2 bg-white/10 rounded-lg text-white">Batal</button>
+                                      <button onClick={handleUpdateStoreLevel} className="flex-1 py-2 bg-brand-600 rounded-lg text-white">Simpan</button>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  )}
+
                   <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
                       <div className="p-6 border-b border-white/5 flex justify-between items-center">
                           <h3 className="text-white font-bold">Daftar Toko Member ({sellers.length})</h3>
@@ -558,61 +604,91 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                               <thead className="bg-white/5 text-[10px] uppercase font-bold text-gray-500">
                                   <tr>
                                       <th className="p-4">Nama Toko</th>
-                                      <th className="p-4">Pemilik (User)</th>
                                       <th className="p-4">Level</th>
                                       <th className="p-4">Status</th>
+                                      <th className="p-4">Produk</th>
                                       <th className="p-4 text-right">Aksi</th>
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-white/5">
                                   {sellers.map(s => (
-                                      <tr key={s.id} className="hover:bg-white/5 transition-colors">
-                                          <td className="p-4">
-                                              <div className="flex items-center gap-3">
-                                                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Store size={20}/></div>
-                                                  <div>
-                                                      <span className="text-white font-bold text-sm flex items-center gap-1">
-                                                          {s.storeName}
-                                                          {/* VERIFICATION BADGE */}
-                                                          {s.storeStatus === StoreStatus.ACTIVE && (
-                                                              <BadgeCheck size={14} className="text-orange-500 fill-current"/>
-                                                          )}
-                                                      </span>
-                                                      <span className="text-[10px] text-gray-400">{s.storeDescription?.substring(0,30)}...</span>
+                                      <React.Fragment key={s.id}>
+                                          <tr className="hover:bg-white/5 transition-colors">
+                                              <td className="p-4">
+                                                  <div className="flex items-center gap-3">
+                                                      <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Store size={20}/></div>
+                                                      <div>
+                                                          <span className="text-white font-bold text-sm flex items-center gap-1">
+                                                              {s.storeName}
+                                                              {s.storeStatus === StoreStatus.ACTIVE && <BadgeCheck size={14} className="text-orange-500 fill-current"/>}
+                                                          </span>
+                                                          <span className="text-[10px] text-gray-400">{s.username}</span>
+                                                      </div>
                                                   </div>
-                                              </div>
-                                          </td>
-                                          <td className="p-4">
-                                              <span className="text-white text-sm font-bold">{s.username}</span>
-                                              <div className="text-[10px] text-gray-500 font-mono">{s.email}</div>
-                                          </td>
-                                          <td className="p-4">
-                                              <div className="flex flex-col">
-                                                  <span className="text-yellow-500 font-bold text-sm">Level {s.storeLevel || 1}</span>
-                                                  <span className="text-[10px] text-gray-500">{s.storeExp || 0} EXP</span>
-                                              </div>
-                                          </td>
-                                          <td className="p-4">
-                                              <span className={`px-2 py-1 rounded text-[10px] font-bold ${
-                                                  s.storeStatus === 'ACTIVE' ? 'bg-green-500/20 text-green-500' :
-                                                  s.storeStatus === 'SUSPENDED' ? 'bg-red-500/20 text-red-500' :
-                                                  'bg-yellow-500/20 text-yellow-500'
-                                              }`}>
-                                                  {s.storeStatus || 'PENDING'}
-                                              </span>
-                                          </td>
-                                          <td className="p-4 text-right">
-                                              <div className="flex justify-end gap-2">
-                                                  {s.storeStatus !== StoreStatus.ACTIVE && (
-                                                      <button onClick={() => handleStoreAction(s.id, 'VERIFY')} className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs rounded-lg">Verifikasi</button>
-                                                  )}
-                                                  {s.storeStatus !== StoreStatus.SUSPENDED && (
-                                                      <button onClick={() => handleStoreAction(s.id, 'SUSPEND')} className="px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white text-xs rounded-lg">Blokir</button>
-                                                  )}
-                                                  <button onClick={() => handleStoreAction(s.id, 'DELETE')} className="p-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg"><Trash2 size={14}/></button>
-                                              </div>
-                                          </td>
-                                      </tr>
+                                              </td>
+                                              <td className="p-4">
+                                                  <div className="flex flex-col cursor-pointer hover:opacity-80" onClick={() => { setManualExpId(s.id); setManualLevelVal(s.storeLevel?.toString() || '1'); setManualExpVal(s.storeExp?.toString() || '0'); }}>
+                                                      <span className="text-yellow-500 font-bold text-sm flex items-center gap-1">Level {s.storeLevel || 1} <Edit2 size={10} className="text-gray-500"/></span>
+                                                      <span className="text-[10px] text-gray-500">{s.storeExp || 0} EXP</span>
+                                                  </div>
+                                              </td>
+                                              <td className="p-4">
+                                                  <span className={`px-2 py-1 rounded text-[10px] font-bold ${
+                                                      s.storeStatus === 'ACTIVE' ? 'bg-green-500/20 text-green-500' :
+                                                      s.storeStatus === 'SUSPENDED' ? 'bg-red-500/20 text-red-500' :
+                                                      'bg-yellow-500/20 text-yellow-500'
+                                                  }`}>
+                                                      {s.storeStatus || 'PENDING'}
+                                                  </span>
+                                              </td>
+                                              <td className="p-4">
+                                                  <button onClick={() => handleViewStoreProducts(s.id)} className="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-white/10">
+                                                      {viewingStoreId === s.id ? 'Tutup' : 'Lihat Produk'}
+                                                  </button>
+                                              </td>
+                                              <td className="p-4 text-right">
+                                                  <div className="flex justify-end gap-2">
+                                                      {s.storeStatus !== StoreStatus.ACTIVE && (
+                                                          <button onClick={() => handleStoreAction(s.id, 'VERIFY')} className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs rounded-lg">Verifikasi</button>
+                                                      )}
+                                                      {s.storeStatus !== StoreStatus.SUSPENDED && (
+                                                          <button onClick={() => handleStoreAction(s.id, 'SUSPEND')} className="px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white text-xs rounded-lg">Blokir</button>
+                                                      )}
+                                                      <button onClick={() => handleStoreAction(s.id, 'DELETE')} className="p-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg"><Trash2 size={14}/></button>
+                                                  </div>
+                                              </td>
+                                          </tr>
+                                          {viewingStoreId === s.id && (
+                                              <tr>
+                                                  <td colSpan={5} className="p-4 bg-black/20">
+                                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                          {selectedStoreProducts.length === 0 ? (
+                                                              <p className="text-gray-500 text-xs italic">Toko ini belum memiliki produk.</p>
+                                                          ) : (
+                                                              selectedStoreProducts.map(p => (
+                                                                  <div key={p.id} className="bg-[#1e293b] p-3 rounded-xl flex gap-3 relative group">
+                                                                      <img src={p.image || "https://picsum.photos/100"} className="w-16 h-16 rounded-lg object-cover"/>
+                                                                      <div className="flex-1 min-w-0">
+                                                                          <p className="text-white text-sm font-bold truncate">{p.name}</p>
+                                                                          <p className="text-brand-400 text-xs">Rp {p.price.toLocaleString()}</p>
+                                                                          {p.isBoosted && <span className="text-[9px] bg-purple-500 text-white px-1 rounded inline-block mt-1">BOOSTED</span>}
+                                                                      </div>
+                                                                      <div className="flex flex-col gap-1">
+                                                                          <button onClick={() => handleToggleBoost(p)} className={`p-1.5 rounded-lg ${p.isBoosted ? 'bg-purple-600 text-white' : 'bg-white/10 text-gray-400 hover:bg-purple-600 hover:text-white'}`} title="Iklankan ke Home">
+                                                                              <ArrowUpCircle size={14}/>
+                                                                          </button>
+                                                                          <button onClick={(e) => handleDeleteProduct(e, p.id)} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white" title="Hapus Produk">
+                                                                              <Trash2 size={14}/>
+                                                                          </button>
+                                                                      </div>
+                                                                  </div>
+                                                              ))
+                                                          )}
+                                                      </div>
+                                                  </td>
+                                              </tr>
+                                          )}
+                                      </React.Fragment>
                                   ))}
                               </tbody>
                           </table>

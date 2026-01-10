@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
 import { Product, User, CartItem, ProductVariant, Report } from '../types';
 import { useToast } from '../components/Toast';
-import { ShoppingCart, ArrowRight, Info, Search, Filter, ArrowUpDown, Clock, Zap, Flag, Share2 } from 'lucide-react';
+import { ShoppingCart, ArrowRight, Info, Search, Filter, ArrowUpDown, Clock, Zap, Flag, Share2, Ticket } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
 import ReviewSection from '../components/ReviewSection';
 
@@ -32,13 +32,14 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
   
   const [inputFields, setInputFields] = useState<{[key:string]: string}>({});
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [couponCode, setCouponCode] = useState('');
   const [reportReason, setReportReason] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
         setLoading(true);
-        // getGlobalProducts sudah dimodifikasi di storageService untuk mengurutkan Admin Products first
+        // getGlobalProducts di storageService sudah diatur Admin (atas) > Member (bawah)
         const allProducts = await StorageService.getGlobalProducts();
         setProducts(allProducts);
         
@@ -73,8 +74,7 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
           else if (selectedCategory === 'OTHER') res = res.filter(p => !['ITEM', 'SKIN', 'JOKI', 'REKBER'].includes(p.type));
       }
 
-      // Sort hanya di dalam grup (Admin vs Member). Tapi karena kita ingin mempertahankan urutan Admin > Member, sorting harga mungkin sedikit merusak "grup". 
-      // Solusi: Sorting tetap berlaku global untuk hasil pencarian user.
+      // Sort logic
       if (sortOrder === 'LOW_HIGH') res.sort((a,b) => a.price - b.price);
       else if (sortOrder === 'HIGH_LOW') res.sort((a,b) => b.price - a.price);
       else res.sort((a,b) => Number(b.id) - Number(a.id)); 
@@ -99,7 +99,8 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
           quantity: 1,
           inputData: inputFields,
           note: inputFields['note'] || '',
-          sellerId: activeProduct.sellerId
+          sellerId: activeProduct.sellerId,
+          couponCode: couponCode || undefined
       };
       
       await StorageService.addToCart(user.id, item);
@@ -142,45 +143,60 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                <ArrowRight className="rotate-180" size={16}/> Kembali ke Katalog
            </button>
 
-           {/* 1. COMPACT HEADER */}
-           <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl mb-6 animate-fade-in relative">
-               <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
-                    <div className="flex-shrink-0 w-24 h-24 md:w-40 md:h-40 bg-gray-800 rounded-xl overflow-hidden border border-white/10 shadow-lg relative group">
-                         <img src={activeProduct.image || "https://picsum.photos/500"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
-                    </div>
-                    {/* Info */}
-                    <div className="flex-1 text-center md:text-left">
-                         <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-2">
-                             <span className="px-2 py-0.5 rounded text-[10px] bg-brand-600 text-white font-bold uppercase tracking-wider">{activeProduct.type}</span>
-                             {activeProduct.sellerName ? (
-                                 <span className="px-2 py-0.5 rounded text-[10px] bg-purple-600/20 text-purple-300 font-bold uppercase tracking-wider border border-purple-500/20 flex items-center gap-1">Seller: {activeProduct.sellerName} {activeProduct.isVerifiedStore && '✅'}</span>
-                             ) : (
-                                 <span className="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-bold uppercase tracking-wider border border-blue-500/20">OFFICIAL</span>
-                             )}
-                         </div>
-                         <h1 className="text-xl md:text-2xl font-bold text-white mb-2 leading-tight">{activeProduct.name}</h1>
-                         <div className="text-2xl md:text-3xl font-extrabold text-brand-400 mb-3">
-                             Rp {(selectedVariant ? selectedVariant.price : activeProduct.price).toLocaleString()}
-                         </div>
-                         
-                         <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-lg border border-green-500/20 text-xs font-bold">
-                             <Clock size={14}/> Rata-rata proses: 5-10 Menit (Otomatis)
-                         </div>
-                    </div>
-               </div>
-               
-               {/* REPORT & SHARE BUTTONS */}
-               <div className="absolute top-4 right-4 flex gap-2">
-                   <button onClick={() => setShowReportModal(true)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors" title="Laporkan Produk">
-                       <Flag size={18}/>
-                   </button>
-               </div>
-           </div>
-
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* LEFT COLUMN: CONFIGURATION */}
-                <div className="lg:col-span-2 space-y-6 animate-slide-up">
-                     <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl">
+               
+               {/* MAIN COLUMN: HEADER, DESC, REVIEWS */}
+               <div className="lg:col-span-2 space-y-6">
+                   {/* 1. UNIFIED HEADER CARD (Photo + Info + Desc) */}
+                   <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl animate-fade-in relative">
+                       <div className="flex flex-col md:flex-row gap-6">
+                            <div className="flex-shrink-0 w-full md:w-64 bg-gray-800 rounded-xl overflow-hidden border border-white/10 shadow-lg relative group aspect-square md:aspect-auto">
+                                 <img src={activeProduct.image || "https://picsum.photos/500"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+                            </div>
+                            
+                            <div className="flex-1">
+                                 <div className="flex flex-wrap gap-2 mb-2">
+                                     <span className="px-2 py-0.5 rounded text-[10px] bg-brand-600 text-white font-bold uppercase tracking-wider">{activeProduct.type}</span>
+                                     {activeProduct.sellerName ? (
+                                         <span className="px-2 py-0.5 rounded text-[10px] bg-purple-600/20 text-purple-300 font-bold uppercase tracking-wider border border-purple-500/20 flex items-center gap-1">Seller: {activeProduct.sellerName} {activeProduct.isVerifiedStore && '✅'}</span>
+                                     ) : (
+                                         <span className="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-bold uppercase tracking-wider border border-blue-500/20">OFFICIAL</span>
+                                     )}
+                                 </div>
+                                 <h1 className="text-2xl font-bold text-white mb-2 leading-tight">{activeProduct.name}</h1>
+                                 <div className="text-3xl font-extrabold text-brand-400 mb-4">
+                                     Rp {(selectedVariant ? selectedVariant.price : activeProduct.price).toLocaleString()}
+                                 </div>
+                                 
+                                 <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-lg border border-green-500/20 text-xs font-bold mb-6">
+                                     <Clock size={14}/> Rata-rata proses: 5-10 Menit (Otomatis)
+                                 </div>
+
+                                 {/* Description Inside Header */}
+                                 <div className="pt-6 border-t border-white/5">
+                                     <h3 className="font-bold text-white mb-2 text-sm flex items-center gap-2"><Info size={16} className="text-blue-400"/> Deskripsi</h3>
+                                     <div className="prose prose-invert prose-sm text-gray-400 whitespace-pre-wrap leading-relaxed text-sm">
+                                         {activeProduct.description || "Tidak ada deskripsi tersedia."}
+                                     </div>
+                                 </div>
+                            </div>
+                       </div>
+                       
+                       {/* REPORT BUTTON */}
+                       <div className="absolute top-4 right-4">
+                           <button onClick={() => setShowReportModal(true)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors" title="Laporkan Produk">
+                               <Flag size={18}/>
+                           </button>
+                       </div>
+                   </div>
+
+                   {/* Reviews Section */}
+                   <ReviewSection productId={activeProduct.id} currentUser={user} />
+               </div>
+
+               {/* RIGHT COLUMN: CONFIGURATION */}
+               <div className="lg:col-span-1 space-y-6 animate-slide-up">
+                     <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl sticky top-24">
                          <h2 className="font-bold text-white mb-6 flex items-center gap-2 border-b border-white/5 pb-4">
                              <ShoppingCart size={20} className="text-brand-500"/> Konfigurasi Pesanan
                          </h2>
@@ -190,7 +206,7 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                               {activeProduct.variants && activeProduct.variants.length > 0 && (
                                   <div>
                                       <label className="block text-sm font-bold text-gray-400 mb-3">Pilih Varian</label>
-                                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                      <div className="grid grid-cols-2 gap-3">
                                           {activeProduct.variants.map((v, idx) => (
                                               <div key={idx} onClick={() => setSelectedVariant(v)} className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedVariant === v ? 'bg-brand-600 border-brand-500 text-white shadow-lg transform scale-[1.02]' : 'bg-dark-bg border-white/10 text-gray-300 hover:border-brand-500/50'}`}>
                                                   <div className="font-bold text-sm leading-tight">{v.name}</div>
@@ -203,7 +219,7 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
 
                               {/* Inputs */}
                               <div>
-                                  <label className="block text-sm font-bold text-gray-400 mb-3">Data Akun & Catatan</label>
+                                  <label className="block text-sm font-bold text-gray-400 mb-3">Data Akun</label>
                                   <div className="grid grid-cols-1 gap-4">
                                       <input 
                                         placeholder="User ID / Zone ID / Nickname" 
@@ -211,7 +227,7 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                                         onChange={e => setInputFields({...inputFields, info: e.target.value})}
                                       />
                                       <textarea 
-                                        placeholder="Catatan tambahan untuk admin (Opsional)..." 
+                                        placeholder="Catatan tambahan (Opsional)..." 
                                         className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all" 
                                         rows={2}
                                         onChange={e => setInputFields({...inputFields, note: e.target.value})}
@@ -219,29 +235,31 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                                   </div>
                               </div>
 
+                              {/* Coupon Input */}
+                              <div>
+                                  <label className="block text-sm font-bold text-gray-400 mb-2">Kode Promo / Kupon</label>
+                                  <div className="relative">
+                                      <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18}/>
+                                      <input 
+                                          placeholder="Masukkan kode promo" 
+                                          className="w-full bg-dark-bg border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all" 
+                                          value={couponCode}
+                                          onChange={e => setCouponCode(e.target.value)}
+                                      />
+                                  </div>
+                              </div>
+
                               {/* Actions - Desktop */}
                               <div className="pt-6 border-t border-white/5 hidden md:flex flex-col sm:flex-row gap-3">
                                   <button onClick={handleAddToCart} className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3.5 rounded-xl border border-white/10 flex items-center justify-center gap-2 transition-all">
-                                      <ShoppingCart size={18}/> Tambah Keranjang
+                                      <ShoppingCart size={18}/> Keranjang
                                   </button>
                                   <button onClick={handleBuyNow} className="flex-[2] bg-gradient-to-r from-brand-600 to-blue-600 hover:from-brand-500 hover:to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2 transition-all">
-                                      Beli Sekarang <ArrowRight size={18}/>
+                                      Beli <ArrowRight size={18}/>
                                   </button>
                               </div>
                          </div>
                      </div>
-                </div>
-
-                {/* RIGHT COLUMN: DESCRIPTION & REVIEWS */}
-                <div className="lg:col-span-1 space-y-6 animate-slide-up" style={{animationDelay: '0.1s'}}>
-                    <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl">
-                          <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Info size={18} className="text-blue-400"/> Deskripsi Produk</h3>
-                          <div className="prose prose-invert prose-sm text-gray-400 whitespace-pre-wrap leading-relaxed">
-                              {activeProduct.description || "Tidak ada deskripsi tersedia."}
-                          </div>
-                    </div>
-                    
-                    <ReviewSection productId={activeProduct.id} currentUser={user} />
                 </div>
            </div>
 

@@ -4,11 +4,6 @@ import { StorageService } from './storageService';
 import { auth, googleProvider } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signOut, sendPasswordResetEmail } from "firebase/auth";
 
-// Helper untuk generate UID 6 angka
-const generateShortId = (): string => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
 export const AuthService = {
   
   login: async (email: string, password: string): Promise<AuthResponse> => {
@@ -24,7 +19,6 @@ export const AuthService = {
           // Fallback creation for legacy users without DB entry
           userData = {
               id: firebaseUser.uid,
-              shortId: generateShortId(), // Assign new shortID
               username: firebaseUser.displayName || email.split('@')[0],
               email: email,
               role: UserRole.MEMBER,
@@ -41,12 +35,6 @@ export const AuthService = {
               followers: [],
               following: []
           };
-          await StorageService.saveUser(userData);
-      }
-
-      // Ensure ShortID exists for old users
-      if (!userData.shortId) {
-          userData.shortId = generateShortId();
           await StorageService.saveUser(userData);
       }
 
@@ -88,7 +76,6 @@ export const AuthService = {
 
         const newUser: User = {
           id: firebaseUser.uid,
-          shortId: generateShortId(), // GENERATE 6 DIGIT UID
           username: username,
           email: email,
           role: UserRole.MEMBER,
@@ -128,7 +115,6 @@ export const AuthService = {
           if (!userData) {
               userData = {
                   id: firebaseUser.uid,
-                  shortId: generateShortId(),
                   username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
                   email: firebaseUser.email || '',
                   role: UserRole.MEMBER,
@@ -148,11 +134,6 @@ export const AuthService = {
               await StorageService.saveUser(userData);
           }
           
-          if (!userData.shortId) {
-              userData.shortId = generateShortId();
-              await StorageService.saveUser(userData);
-          }
-
           if (userData.isBanned) return { success: false, message: 'Akun ditangguhkan.' };
           
           if (userData.email === 'aldipranatapratama2005@gmail.com') {

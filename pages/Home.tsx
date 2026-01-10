@@ -16,9 +16,10 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     const fetchProducts = async () => {
-        // Hanya ambil produk global (admin)
         const data = await StorageService.getGlobalProducts();
-        setProducts(data);
+        // Halaman Home: Hanya Produk Admin (!sellerId) ATAU Produk Member yang di-boost (isBoosted)
+        const homeProducts = data.filter(p => !p.sellerId || p.isBoosted);
+        setProducts(homeProducts);
         setLoading(false);
     };
     fetchProducts();

@@ -20,7 +20,7 @@ export enum StoreStatus {
 
 export interface User {
   id: string; 
-  shortId?: string; // UID 6 Angka Unik
+  // shortId removed, using Firebase UID directly
   username: string;
   email: string;
   role: UserRole;
@@ -83,8 +83,11 @@ export interface Product {
   // SELLER FIELDS
   sellerId?: string; 
   sellerName?: string;
-  sellerLevel?: number; // Menampilkan level seller di card produk
-  isVerifiedStore?: boolean; // Lencana Oranye
+  sellerLevel?: number; 
+  isVerifiedStore?: boolean; 
+  
+  // ADMIN FEATURES
+  isBoosted?: boolean; // Produk member yang diiklankan Admin ke Home
 }
 
 export interface CartItem {
@@ -98,6 +101,7 @@ export interface CartItem {
   inputData: { [key: string]: string };
   note?: string;
   sellerId?: string; 
+  couponCode?: string; // Menyimpan kode kupon yang diinput user
 }
 
 export interface Review {
