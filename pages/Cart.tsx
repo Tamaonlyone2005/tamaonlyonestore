@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { StorageService } from '../services/storageService';
 import { CartItem, Order, OrderStatus, User } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, ShoppingCart, ArrowRight, Phone, CreditCard, Info, AlertCircle, CheckCircle, Copy, Landmark, Ticket } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowRight, Phone, CreditCard, Info, AlertCircle, CheckCircle, Copy, Landmark, Ticket, Loader2 } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { PAYMENT_CONFIG } from '../constants';
 
@@ -19,7 +19,7 @@ const Cart: React.FC = () => {
     
     // Voucher State
     const [voucherCode, setVoucherCode] = useState('');
-    const [discount, setDiscount] = useState(0);
+    const [validatingVoucher, setValidatingVoucher] = useState(false);
 
     useEffect(() => {
         const session = StorageService.getSession();
@@ -52,8 +52,7 @@ const Cart: React.FC = () => {
         setIsProcessing(true);
         try {
             for (const item of cartItems) {
-                // Apply discount proportionally or to total (simplified here to just record price)
-                // For a real app, distribute discount across items
+                const finalPrice = Math.max(0, item.price - (item.discountAmount || 0));
                 const order: Order = {
                     id: 'TRX' + Date.now().toString().slice(-6) + Math.floor(Math.random()*100),
                     userId: user.id,
@@ -64,11 +63,12 @@ const Cart: React.FC = () => {
                     productId: item.productId,
                     productName: item.productName,
                     variantName: item.variantName,
-                    price: item.price, // Save original price for record, handle total in payment
+                    price: finalPrice, 
                     originalPrice: item.price,
-                    couponCode: voucherCode || undefined,
+                    couponCode: item.couponCode || undefined,
                     status: OrderStatus.PENDING,
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date().toISOString(),
+                    sellerId: item.sellerId
                 };
                 await StorageService.createOrder(order);
             }
@@ -83,18 +83,57 @@ const Cart: React.FC = () => {
         }
     };
     
-    const handleApplyVoucher = () => {
-        if(voucherCode.toLowerCase() === 'tama2025') {
-            setDiscount(5000);
-            addToast("Voucher berhasil dipasang! Hemat Rp 5.000", "success");
-        } else {
-            addToast("Kode voucher tidak valid", "error");
-            setDiscount(0);
+    const handleApplyVoucher = async () => {
+        if(!voucherCode) return addToast("Masukkan kode voucher", "error");
+        setValidatingVoucher(true);
+
+        try {
+            const updatedItems: CartItem[] = [];
+            let appliedCount = 0;
+
+            for (const item of cartItems) {
+                // Check per item because coupon might valid only for some items
+                const res = await StorageService.validateCoupon(voucherCode, item.productId, item.sellerId);
+                
+                if (res.valid) {
+                    const newItem = { ...item, couponCode: voucherCode, discountAmount: res.discount };
+                    await StorageService.addToCart(user!.id, newItem); // Update cart in DB
+                    updatedItems.push(newItem);
+                    appliedCount++;
+                } else {
+                    // Reset if invalid for this item or if trying new code
+                    if(item.couponCode) {
+                         const resetItem = { ...item, couponCode: undefined, discountAmount: 0 };
+                         await StorageService.addToCart(user!.id, resetItem);
+                         updatedItems.push(resetItem);
+                    } else {
+                         updatedItems.push(item);
+                    }
+                }
+            }
+
+            setCartItems(updatedItems);
+            
+            if (appliedCount > 0) {
+                addToast(`Voucher diterapkan pada ${appliedCount} item!`, "success");
+            } else {
+                // Determine reason roughly (e.g., if any item has sellerId)
+                const hasSellerItems = cartItems.some(i => !!i.sellerId);
+                if (hasSellerItems) addToast("Voucher tidak berlaku untuk produk Seller.", "error");
+                else addToast("Kode voucher tidak valid atau tidak memenuhi syarat.", "error");
+            }
+
+        } catch (e) {
+            console.error(e);
+            addToast("Gagal memvalidasi voucher.", "error");
+        } finally {
+            setValidatingVoucher(false);
         }
     };
 
     const subtotal = cartItems.reduce((acc, item) => acc + item.price, 0);
-    const totalPrice = Math.max(0, subtotal - discount);
+    const totalDiscount = cartItems.reduce((acc, item) => acc + (item.discountAmount || 0), 0);
+    const totalPrice = Math.max(0, subtotal - totalDiscount);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -127,8 +166,16 @@ const Cart: React.FC = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="font-bold text-white text-base truncate">{item.productName}</h4>
-                                    <p className="text-xs text-gray-500 mb-2">{item.variantName || 'Regular Pack'}</p>
-                                    <p className="text-brand-400 font-extrabold text-sm">Rp {item.price.toLocaleString()}</p>
+                                    <p className="text-xs text-gray-500 mb-1">{item.variantName || 'Regular Pack'}</p>
+                                    
+                                    {/* Price & Discount Logic */}
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-brand-400 font-extrabold text-sm">Rp {item.price.toLocaleString()}</p>
+                                        {item.discountAmount && item.discountAmount > 0 ? (
+                                            <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded font-bold">Hemat Rp {item.discountAmount.toLocaleString()}</span>
+                                        ) : null}
+                                    </div>
+                                    {item.couponCode && <p className="text-[10px] text-green-500 mt-1 flex items-center gap-1"><Ticket size={10}/> Kupon: {item.couponCode}</p>}
                                 </div>
                                 <button onClick={(e) => handleRemove(e, item.id)} className="p-3 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all z-10 cursor-pointer">
                                     <Trash2 size={20}/>
@@ -174,7 +221,9 @@ const Cart: React.FC = () => {
                                                 className="w-full bg-dark-bg border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-white text-sm focus:border-brand-500 outline-none"
                                             />
                                         </div>
-                                        <button onClick={handleApplyVoucher} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-2xl font-bold text-xs">Apply</button>
+                                        <button onClick={handleApplyVoucher} disabled={validatingVoucher} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-2xl font-bold text-xs disabled:opacity-50">
+                                            {validatingVoucher ? <Loader2 className="animate-spin" size={14}/> : 'Apply'}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -184,10 +233,10 @@ const Cart: React.FC = () => {
                                     <span className="text-gray-400 text-sm">Subtotal</span>
                                     <span className="text-gray-300 text-sm font-bold">Rp {subtotal.toLocaleString()}</span>
                                 </div>
-                                {discount > 0 && (
+                                {totalDiscount > 0 && (
                                     <div className="flex justify-between items-center mb-2 text-green-400">
-                                        <span className="text-sm">Diskon</span>
-                                        <span className="text-sm font-bold">-Rp {discount.toLocaleString()}</span>
+                                        <span className="text-sm">Total Diskon</span>
+                                        <span className="text-sm font-bold">-Rp {totalDiscount.toLocaleString()}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between items-center pt-2 border-t border-white/5">

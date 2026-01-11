@@ -261,8 +261,13 @@ export const StorageService = {
   
   getGlobalProducts: async (): Promise<Product[]> => {
       const all = await StorageService.getProducts();
+      // Ensure strict sorting: Admin products first, then Member products
       const adminProducts = all.filter(p => !p.sellerId);
       const sellerProducts = all.filter(p => p.sellerId);
+      // Sort within groups if needed, e.g., by name or ID
+      adminProducts.sort((a, b) => b.id.localeCompare(a.id));
+      sellerProducts.sort((a, b) => b.id.localeCompare(a.id));
+      
       return [...adminProducts, ...sellerProducts];
   },
 
@@ -300,6 +305,16 @@ export const StorageService = {
   createOrder: async (order: Order) => {
       await setDocument('orders', order.id, order);
       await StorageService.logActivity(order.userId, order.username, "BUY", `Membuat pesanan ${order.productName} (#${order.id})`);
+      
+      // Update coupon usage if used
+      if (order.couponCode) {
+          const coupons = await StorageService.getCoupons();
+          const coupon = coupons.find(c => c.code === order.couponCode);
+          if (coupon) {
+              coupon.currentUsage = (coupon.currentUsage || 0) + 1;
+              await StorageService.saveCoupon(coupon);
+          }
+      }
       return true;
   },
   uploadPaymentProof: async (orderId: string, proofImage: string) => {
@@ -435,6 +450,36 @@ export const StorageService = {
   getCoupons: async (): Promise<Coupon[]> => getCollection<Coupon>('coupons'),
   saveCoupon: async (coupon: Coupon) => { await setDocument('coupons', coupon.id, coupon); },
   deleteCoupon: async (id: string) => { await deleteDocument('coupons', id); },
+  
+  validateCoupon: async (code: string, productId: string, sellerId?: string): Promise<{valid: boolean, discount: number, message: string}> => {
+      // 1. Coupon only works for ADMIN products (no sellerId)
+      if (sellerId) {
+          return { valid: false, discount: 0, message: "Kupon hanya berlaku untuk produk Official." };
+      }
+
+      const coupons = await StorageService.getCoupons();
+      const coupon = coupons.find(c => c.code.toUpperCase() === code.toUpperCase());
+
+      if (!coupon) return { valid: false, discount: 0, message: "Kode kupon tidak ditemukan." };
+      if (!coupon.isActive) return { valid: false, discount: 0, message: "Kupon tidak aktif." };
+      
+      // 2. Check Expiry
+      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+          return { valid: false, discount: 0, message: "Kupon sudah kadaluarsa." };
+      }
+
+      // 3. Check Max Usage
+      if (coupon.maxUsage && (coupon.currentUsage || 0) >= coupon.maxUsage) {
+          return { valid: false, discount: 0, message: "Kuota kupon habis." };
+      }
+
+      // 4. Check Product Restriction
+      if (coupon.validProductIds && coupon.validProductIds.length > 0 && !coupon.validProductIds.includes(productId)) {
+          return { valid: false, discount: 0, message: "Kupon tidak berlaku untuk produk ini." };
+      }
+
+      return { valid: true, discount: coupon.discountAmount, message: `Diskon Rp ${coupon.discountAmount.toLocaleString()} diterapkan!` };
+  },
 
   createServiceRequest: async (req: ServiceRequest) => { await setDocument('service_requests', req.id, req); },
 

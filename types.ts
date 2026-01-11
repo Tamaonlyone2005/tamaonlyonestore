@@ -102,6 +102,7 @@ export interface CartItem {
   note?: string;
   sellerId?: string; 
   couponCode?: string; // Menyimpan kode kupon yang diinput user
+  discountAmount?: number;
 }
 
 export interface Review {
@@ -120,10 +121,14 @@ export interface Coupon {
   code: string;
   name: string;
   discountAmount: number;
-  costPoints: number;
   isPublic: boolean;
   isActive: boolean;
-  maxUsage?: number;
+  
+  // New Constraints
+  validProductIds?: string[]; // Jika kosong, berlaku untuk semua produk ADMIN
+  maxUsage?: number; // Total berapa kali kupon bisa dipakai global
+  currentUsage?: number;
+  expiresAt?: string; // ISO String date
 }
 
 export interface SiteProfile {

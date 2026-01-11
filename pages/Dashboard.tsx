@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { Product, User, UserRole, Order, ActivityLog, OrderStatus, VipLevel, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive } from '../types';
-import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, AlertTriangle, Copy, Zap, ArrowUpCircle, Edit2, Database, Server, HardDrive, Download } from 'lucide-react';
+import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive } from '../types';
+import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -37,7 +37,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   
   // Data States
   const [products, setProducts] = useState<Product[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]); // Store both admin & member
+  const [allProducts, setAllProducts] = useState<Product[]>([]); 
   const [members, setMembers] = useState<User[]>([]);
   const [sellers, setSellers] = useState<User[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -76,7 +76,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
     }
     
     refreshData();
-    runCleanupJob(); // Run cleanup check on mount
+    runCleanupJob(); 
     
     const unsubscribeOrders = StorageService.subscribeToOrders((updatedOrders) => {
         setOrders(updatedOrders);
@@ -107,7 +107,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             StorageService.getArchives()
         ]);
         
-        setAllProducts(p); // ALL products
+        setAllProducts(p); 
         setProducts(p.filter(prod => !prod.sellerId)); // Only Admin products for "Products" tab
         
         const onlyMembers = allUsers.filter(u => u.role !== UserRole.ADMIN);
@@ -186,7 +186,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       addToast(`Status Boost produk diperbarui!`, "success");
       refreshData();
       if(viewingStoreId) {
-          // Update local view state if viewing a store
           setSelectedStoreProducts(prev => prev.map(p => p.id === product.id ? {...p, isBoosted: !p.isBoosted} : p));
       }
   };
@@ -273,18 +272,23 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   const handleAddCoupon = async () => {
       if(!newCoupon.code || !newCoupon.discountAmount) return addToast("Lengkapi data kupon", "error");
+      
       const coupon: Coupon = {
           id: Date.now().toString(),
           code: newCoupon.code.toUpperCase(),
           name: newCoupon.name || 'Promo',
           discountAmount: Number(newCoupon.discountAmount),
-          costPoints: Number(newCoupon.costPoints || 0),
           isPublic: newCoupon.isPublic || false,
-          isActive: true
+          isActive: true,
+          // New Fields
+          validProductIds: newCoupon.validProductIds,
+          maxUsage: newCoupon.maxUsage ? Number(newCoupon.maxUsage) : undefined,
+          expiresAt: newCoupon.expiresAt,
+          currentUsage: 0
       };
       await StorageService.saveCoupon(coupon);
       setCoupons(prev => [...prev, coupon]);
-      setNewCoupon({ isActive: true, isPublic: true });
+      setNewCoupon({ isActive: true, isPublic: true, validProductIds: [] });
       addToast("Kupon berhasil dibuat", "success");
   };
 
@@ -316,14 +320,14 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       addToast("UID disalin!", "info");
   };
 
-  // Calculate Storage Stats (Estimasi 2KB per doc + Asset overhead approximation)
+  // Calculate Storage Stats
   const totalDocs = members.length + sellers.length + allProducts.length + orders.length + logs.length + coupons.length + reports.length + archives.length;
-  const estimatedSizeKB = totalDocs * 2; // Rough estimate
-  const totalQuotaKB = 1024 * 1024; // 1 GB in KB (Firebase Spark Plan limit approx)
+  const estimatedSizeKB = totalDocs * 2;
+  const totalQuotaKB = 1024 * 1024;
   const usagePercent = Math.min(100, (estimatedSizeKB / totalQuotaKB) * 100);
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 py-8 sm:px-6 lg:px-8 min-h-screen">
+    <div className="flex h-screen overflow-hidden bg-[#0f172a]">
       {loading && (
           <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center backdrop-blur-sm">
               <div className="bg-dark-card p-6 rounded-3xl flex flex-col items-center gap-4 border border-white/10">
@@ -333,15 +337,14 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
           </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Nav */}
-        <aside className="w-full lg:w-72 bg-dark-card/80 backdrop-blur-xl border border-white/5 rounded-3xl p-6 h-fit lg:sticky lg:top-24 shadow-2xl">
-          <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="p-3 bg-brand-600 rounded-xl shadow-lg shadow-brand-500/30 text-white"><LayoutDashboard size={24} /></div>
-            <div><h2 className="font-extrabold text-xl text-white">Owner Panel</h2><p className="text-[10px] text-brand-400 font-bold uppercase tracking-widest">Store Management</p></div>
+      {/* LEFT SIDEBAR - FIXED */}
+      <aside className="w-64 bg-dark-card border-r border-white/5 flex flex-col flex-shrink-0 z-20">
+          <div className="p-6 border-b border-white/5 flex items-center gap-3">
+            <div className="p-2 bg-brand-600 rounded-lg shadow-lg shadow-brand-500/30 text-white"><LayoutDashboard size={20} /></div>
+            <div><h2 className="font-extrabold text-lg text-white">Admin Panel</h2></div>
           </div>
           
-          <nav className="space-y-2">
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {[
                 { id: 'overview', label: 'Ringkasan', icon: TrendingUp },
                 { id: 'products', label: 'Katalog Produk', icon: Package },
@@ -356,21 +359,29 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                 <button 
                     key={item.id} 
                     onClick={() => setActiveTab(item.id as any)}
-                    className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === item.id ? 'bg-brand-600 text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === item.id ? 'bg-brand-600 text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
                 >
                     <item.icon size={18} /> {item.label}
                     {item.badge ? <span className="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">{item.badge}</span> : null}
                 </button>
             ))}
           </nav>
-        </aside>
+          
+          <div className="p-4 border-t border-white/5">
+              <button onClick={() => navigate('/')} className="w-full flex items-center gap-2 text-gray-500 hover:text-white text-xs font-bold justify-center">
+                  Kembali ke Website
+              </button>
+          </div>
+      </aside>
 
-        {/* Content Area */}
-        <div className="flex-1 space-y-8">
+      {/* RIGHT CONTENT - SCROLLABLE */}
+      <main className="flex-1 overflow-y-auto p-4 lg:p-8 relative">
+          <div className="max-w-7xl mx-auto space-y-8">
           
           {/* TAB: OVERVIEW */}
           {activeTab === 'overview' && (
               <div className="animate-fade-in space-y-8">
+                  <h1 className="text-2xl font-bold text-white mb-6">Ringkasan Sistem</h1>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       <StatCard title="Pendapatan" value={`Rp ${stats.revenue.toLocaleString()}`} icon={DollarSign} color="green" />
                       <StatCard title="Pending" value={stats.pendingOrders.toString()} icon={ShoppingCart} color="yellow" />
@@ -417,11 +428,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                            <DbStatRow label="Active Coupons" count={coupons.length} icon={Ticket}/>
                            <DbStatRow label="Reports" count={reports.length} icon={Flag}/>
                       </div>
-                      
-                      <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-gray-500">
-                          <div className="flex items-center gap-2"><Server size={14}/> Cloud Firestore (NoSQL)</div>
-                          <div>Total Documents: {totalDocs.toLocaleString()}</div>
-                      </div>
                   </div>
 
                   {/* AUTO-CLEANUP HISTORY ARCHIVES */}
@@ -453,107 +459,193 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* ... [Other tabs (Products, Orders, Members, etc.) remain unchanged] ... */}
-          
+          {/* TAB: PRODUCTS */}
           {activeTab === 'products' && (
-              <div className="animate-fade-in space-y-8">
-                  {/* ... Existing Product Form ... */}
-                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
-                      <h3 className="text-xl font-bold text-white mb-6">Tambah Produk Admin (Official)</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <input placeholder="Nama Produk" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.name || ''} onChange={e => setNewProduct({...newProduct, name: e.target.value})}/>
-                          <input placeholder="Harga Dasar (Rp)" type="number" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})}/>
-                          <select className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value as ProductType})}>
-                              <option value="ITEM">Digital Item</option>
-                              <option value="SKIN">Gift Skin</option>
-                              <option value="JOKI">Jasa Joki</option>
-                              <option value="REKBER">Rekber</option>
-                              <option value="VOUCHER">Voucher</option>
-                              <option value="OTHER">Lainnya</option>
-                          </select>
-                          
-                          <div className="relative group">
-                              <input type="file" onChange={handleProductImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" />
-                              <div className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white flex items-center gap-3">
-                                  <Upload size={18} className="text-gray-400"/>
-                                  <span className="text-sm text-gray-400 truncate">{newProduct.image ? 'Gambar Terupload' : 'Upload Gambar'}</span>
+              <div className="animate-fade-in flex flex-col xl:flex-row gap-8">
+                  {/* FORM INPUT PRODUCT (RIGHT PANEL in large screens, top in mobile) */}
+                  <div className="xl:w-1/3 xl:order-2">
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6 sticky top-4 shadow-xl">
+                          <h3 className="text-xl font-bold text-white mb-4">Input Produk Official</h3>
+                          <div className="space-y-4">
+                              <input placeholder="Nama Produk" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newProduct.name || ''} onChange={e => setNewProduct({...newProduct, name: e.target.value})}/>
+                              <div className="grid grid-cols-2 gap-4">
+                                  <input placeholder="Harga (Rp)" type="number" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})}/>
+                                  <select className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value as ProductType})}>
+                                      <option value="ITEM">Digital Item</option>
+                                      <option value="SKIN">Gift Skin</option>
+                                      <option value="JOKI">Jasa Joki</option>
+                                      <option value="REKBER">Rekber</option>
+                                      <option value="VOUCHER">Voucher</option>
+                                      <option value="OTHER">Lainnya</option>
+                                  </select>
                               </div>
+                              <div className="relative group">
+                                  <input type="file" onChange={handleProductImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" />
+                                  <div className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white flex items-center gap-3">
+                                      <Upload size={18} className="text-gray-400"/>
+                                      <span className="text-sm text-gray-400 truncate">{newProduct.image ? 'Gambar Terupload' : 'Upload Gambar'}</span>
+                                  </div>
+                              </div>
+                              <textarea placeholder="Deskripsi Produk" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white h-24 focus:border-brand-500 outline-none" value={newProduct.description || ''} onChange={e => setNewProduct({...newProduct, description: e.target.value})}/>
+                              <button onClick={handleAddProduct} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus className="inline mr-2"/>Simpan Produk</button>
                           </div>
-
-                          <textarea placeholder="Deskripsi Produk" className="md:col-span-2 bg-dark-bg border border-white/10 rounded-xl p-3 text-white h-24" value={newProduct.description || ''} onChange={e => setNewProduct({...newProduct, description: e.target.value})}/>
-                          <button onClick={handleAddProduct} className="md:col-span-2 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus className="inline mr-2"/>Simpan Produk Official</button>
                       </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                      {products.map(p => (
-                          <div key={p.id} className="bg-dark-card border border-white/5 p-4 rounded-2xl flex items-center gap-4 group">
-                              <img src={p.image || "https://picsum.photos/100"} className="w-16 h-16 rounded-xl object-cover"/>
-                              <div className="flex-1 min-w-0">
-                                  <h4 className="text-white font-bold text-sm truncate">{p.name}</h4>
-                                  <p className="text-brand-400 font-bold text-xs">Rp {p.price.toLocaleString()}</p>
-                                  <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded uppercase">Official</span>
-                              </div>
-                              <button onClick={(e) => handleDeleteProduct(e, p.id)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-all rounded-lg z-10"><Trash2 size={18}/></button>
+                  {/* PRODUCT LIST */}
+                  <div className="flex-1 xl:order-1">
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                          <h3 className="text-xl font-bold text-white mb-6">List Produk Official</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {products.map(p => (
+                                  <div key={p.id} className="bg-dark-bg/50 border border-white/5 p-4 rounded-2xl flex items-center gap-4 group hover:border-brand-500/30 transition-all">
+                                      <img src={p.image || "https://picsum.photos/100"} className="w-16 h-16 rounded-xl object-cover"/>
+                                      <div className="flex-1 min-w-0">
+                                          <h4 className="text-white font-bold text-sm truncate">{p.name}</h4>
+                                          <p className="text-brand-400 font-bold text-xs">Rp {p.price.toLocaleString()}</p>
+                                          <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded uppercase">Official</span>
+                                      </div>
+                                      <button onClick={(e) => handleDeleteProduct(e, p.id)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-all rounded-lg z-10"><Trash2 size={18}/></button>
+                                  </div>
+                              ))}
                           </div>
-                      ))}
+                      </div>
                   </div>
               </div>
           )}
 
+          {/* TAB: COUPONS & PROMO */}
+          {activeTab === 'coupons' && (
+              <div className="animate-fade-in flex flex-col xl:flex-row gap-8">
+                  {/* CREATE COUPON FORM (Right Side) */}
+                  <div className="xl:w-1/3 xl:order-2">
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6 sticky top-4 shadow-xl">
+                          <h3 className="text-xl font-bold text-white mb-6">Buat Kupon Baru</h3>
+                          <div className="space-y-4">
+                              <div>
+                                  <label className="text-xs text-gray-400 mb-1 block">Kode Kupon</label>
+                                  <input placeholder="Contoh: MERDEKA" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newCoupon.code || ''} onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})}/>
+                              </div>
+                              <div>
+                                  <label className="text-xs text-gray-400 mb-1 block">Nominal Diskon (Rp)</label>
+                                  <input placeholder="0" type="number" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newCoupon.discountAmount || ''} onChange={e => setNewCoupon({...newCoupon, discountAmount: Number(e.target.value)})}/>
+                              </div>
+                              
+                              {/* New Fields */}
+                              <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                      <label className="text-xs text-gray-400 mb-1 block">Batas Pakai (Kali)</label>
+                                      <input type="number" placeholder="Unlimited" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" value={newCoupon.maxUsage || ''} onChange={e => setNewCoupon({...newCoupon, maxUsage: Number(e.target.value)})}/>
+                                  </div>
+                                  <div>
+                                      <label className="text-xs text-gray-400 mb-1 block">Kadaluarsa</label>
+                                      <input type="date" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" value={newCoupon.expiresAt || ''} onChange={e => setNewCoupon({...newCoupon, expiresAt: e.target.value})}/>
+                                  </div>
+                              </div>
+                              
+                              <div>
+                                  <label className="text-xs text-gray-400 mb-1 block">ID Produk Khusus (Opsional)</label>
+                                  <input placeholder="Produk ID" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" 
+                                    value={newCoupon.validProductIds?.[0] || ''} 
+                                    onChange={e => setNewCoupon({...newCoupon, validProductIds: e.target.value ? [e.target.value] : []})}
+                                  />
+                                  <p className="text-[10px] text-gray-500 mt-1">*Kosongkan untuk berlaku semua produk Admin.</p>
+                              </div>
+
+                              <button onClick={handleAddCoupon} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus size={18}/> Buat Kupon</button>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* COUPON LIST (Left Side) */}
+                  <div className="flex-1 xl:order-1 space-y-8">
+                      {/* POINTS MANAGER */}
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                          <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Coins className="text-yellow-500"/> Kelola Poin Member</h3>
+                          <div className="flex flex-col md:flex-row gap-4 items-end">
+                              <div className="flex-1 w-full">
+                                  <label className="block text-xs text-gray-400 mb-1">UID Member (Copy dari Daftar Member)</label>
+                                  <input placeholder="Tempel UID disini..." className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointUid} onChange={e => setPointUid(e.target.value)}/>
+                              </div>
+                              <div className="flex-1 w-full">
+                                  <label className="block text-xs text-gray-400 mb-1">Jumlah Poin</label>
+                                  <input type="number" placeholder="0" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointAmount} onChange={e => setPointAmount(e.target.value)}/>
+                              </div>
+                              <button onClick={() => handleManagePointsByUID('ADD')} className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold">Tambah</button>
+                              <button onClick={() => handleManagePointsByUID('SUBTRACT')} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold">Tarik</button>
+                          </div>
+                      </div>
+
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                          <h3 className="text-white font-bold mb-4">Daftar Kupon Aktif</h3>
+                          <div className="space-y-4">
+                              {coupons.length === 0 && <p className="text-gray-500 text-center">Belum ada kupon.</p>}
+                              {coupons.map(c => (
+                                  <div key={c.id} className="bg-dark-bg/50 border border-white/5 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+                                      <div>
+                                          <div className="flex items-center gap-3">
+                                              <h4 className="text-white font-bold text-lg tracking-wider bg-white/10 px-3 py-1 rounded-lg font-mono">{c.code}</h4>
+                                              <span className="text-green-400 font-bold">Rp {c.discountAmount.toLocaleString()}</span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
+                                              <span className="flex items-center gap-1"><Users size={12}/> {c.currentUsage || 0} / {c.maxUsage || '∞'} Used</span>
+                                              {c.expiresAt && <span className="flex items-center gap-1"><Calendar size={12}/> Exp: {new Date(c.expiresAt).toLocaleDateString()}</span>}
+                                              {c.validProductIds && c.validProductIds.length > 0 && <span className="flex items-center gap-1"><List size={12}/> Specific Product</span>}
+                                          </div>
+                                      </div>
+                                      <button onClick={() => handleDeleteCoupon(c.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={18}/></button>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* TAB: ORDERS */}
           {activeTab === 'orders' && (
               <div className="animate-fade-in space-y-6">
+                  {/* Use existing Order UI but ensure it fits the content area */}
                   <div className="flex items-center gap-4 bg-dark-card p-4 rounded-2xl border border-white/5">
                       <Search className="text-gray-500" size={20}/>
                       <input placeholder="Cari ID Transaksi atau Nama User..." className="bg-transparent border-none outline-none text-white w-full" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
                   </div>
-                  
-                  {orders.length === 0 ? (
-                      <div className="bg-dark-card p-10 rounded-3xl text-center text-gray-500 border border-white/5">
-                          <ShoppingCart size={40} className="mx-auto mb-4 opacity-20"/>
-                          <p>Belum ada pesanan masuk.</p>
-                      </div>
-                  ) : (
-                      <div className="space-y-4">
-                          {orders.filter(o => o.id.includes(searchTerm) || o.username.toLowerCase().includes(searchTerm.toLowerCase())).map(order => (
-                              <div key={order.id} className="bg-dark-card border border-white/5 p-6 rounded-3xl flex flex-col md:flex-row justify-between gap-6 hover:border-brand-500/30 transition-all">
-                                  <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-brand-400 font-mono text-xs">#{order.id}</span>
-                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${order.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'}`}>{order.status}</span>
-                                          {order.paymentProof && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 rounded flex items-center gap-1"><ImageIcon size={10}/> Bukti Ada</span>}
-                                      </div>
-                                      <h3 className="text-white font-bold text-lg">{order.productName}</h3>
-                                      <p className="text-gray-400 text-sm">{order.username} • {order.whatsapp}</p>
-                                      <div className="mt-3 flex gap-2 flex-wrap">
-                                          {order.gameData && Object.entries(order.gameData).map(([k,v]) => (
-                                              <span key={k} className="bg-white/5 border border-white/10 px-2 py-1 rounded text-[10px] text-gray-300">{k}: {v}</span>
-                                          ))}
-                                      </div>
-                                      {order.paymentProof && (
-                                          <div className="mt-3">
-                                              <a href={order.paymentProof} target="_blank" className="text-xs text-blue-400 hover:underline">Lihat Bukti Pembayaran</a>
-                                          </div>
-                                      )}
-                                  </div>
-                                  <div className="flex flex-col justify-between items-end gap-4">
-                                      <div className="text-right">
-                                          <p className="text-white font-bold text-xl">Rp {order.price.toLocaleString()}</p>
-                                          <p className="text-[10px] text-gray-500">{new Date(order.createdAt).toLocaleString()}</p>
-                                      </div>
-                                      <div className="flex gap-2">
-                                          {order.status === OrderStatus.PENDING && <button onClick={() => handleOrderStatus(order.id, OrderStatus.PROCESSED)} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Proses</button>}
-                                          {order.status === OrderStatus.PROCESSED && <button onClick={() => handleOrderStatus(order.id, OrderStatus.COMPLETED)} className="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Selesai</button>}
-                                          <button onClick={() => handleOrderStatus(order.id, OrderStatus.CANCELLED)} className="bg-red-500/10 text-red-500 px-4 py-2 rounded-xl text-xs font-bold">Batal</button>
-                                      </div>
-                                  </div>
+                  {/* ... orders mapping ... */}
+                  {orders.filter(o => o.id.includes(searchTerm) || o.username.toLowerCase().includes(searchTerm.toLowerCase())).map(order => (
+                      <div key={order.id} className="bg-dark-card border border-white/5 p-6 rounded-3xl flex flex-col md:flex-row justify-between gap-6 hover:border-brand-500/30 transition-all">
+                          {/* Order Content */}
+                          <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-brand-400 font-mono text-xs">#{order.id}</span>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${order.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'}`}>{order.status}</span>
+                                  {order.paymentProof && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 rounded flex items-center gap-1"><ImageIcon size={10}/> Bukti Ada</span>}
                               </div>
-                          ))}
+                              <h3 className="text-white font-bold text-lg">{order.productName}</h3>
+                              <p className="text-gray-400 text-sm">{order.username} • {order.whatsapp}</p>
+                              {order.couponCode && <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded mt-2 inline-block">Coupon: {order.couponCode}</span>}
+                              {order.paymentProof && (
+                                  <div className="mt-3">
+                                      <a href={order.paymentProof} target="_blank" className="text-xs text-blue-400 hover:underline">Lihat Bukti Pembayaran</a>
+                                  </div>
+                              )}
+                          </div>
+                          <div className="flex flex-col justify-between items-end gap-4">
+                              <div className="text-right">
+                                  <p className="text-white font-bold text-xl">Rp {order.price.toLocaleString()}</p>
+                                  <p className="text-[10px] text-gray-500">{new Date(order.createdAt).toLocaleString()}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                  {order.status === OrderStatus.PENDING && <button onClick={() => handleOrderStatus(order.id, OrderStatus.PROCESSED)} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Proses</button>}
+                                  {order.status === OrderStatus.PROCESSED && <button onClick={() => handleOrderStatus(order.id, OrderStatus.COMPLETED)} className="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Selesai</button>}
+                                  <button onClick={() => handleOrderStatus(order.id, OrderStatus.CANCELLED)} className="bg-red-500/10 text-red-500 px-4 py-2 rounded-xl text-xs font-bold">Batal</button>
+                              </div>
+                          </div>
                       </div>
-                  )}
+                  ))}
               </div>
           )}
 
+          {/* TAB: MEMBERS (RESTORED) */}
           {activeTab === 'members' && (
               <div className="animate-fade-in space-y-6">
                   <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
@@ -614,74 +706,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {activeTab === 'coupons' && (
-              <div className="animate-fade-in space-y-8">
-                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8 mb-8">
-                      <h3 className="text-white font-bold mb-6 flex items-center gap-2"><Coins className="text-yellow-500"/> Kelola Poin Member</h3>
-                      <div className="flex flex-col md:flex-row gap-4 items-end">
-                          <div className="flex-1 w-full">
-                              <label className="block text-xs text-gray-400 mb-1">UID Member (Copy dari Daftar Member)</label>
-                              <input placeholder="Tempel UID disini..." className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointUid} onChange={e => setPointUid(e.target.value)}/>
-                          </div>
-                          <div className="flex-1 w-full">
-                              <label className="block text-xs text-gray-400 mb-1">Jumlah Poin</label>
-                              <input type="number" placeholder="0" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointAmount} onChange={e => setPointAmount(e.target.value)}/>
-                          </div>
-                          <button onClick={() => handleManagePointsByUID('ADD')} className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold">Tambah</button>
-                          <button onClick={() => handleManagePointsByUID('SUBTRACT')} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold">Tarik</button>
-                      </div>
-                  </div>
-
-                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
-                      <h3 className="text-xl font-bold text-white mb-6">Buat Kupon Baru</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <input placeholder="Kode Kupon (Contoh: MERDEKA)" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newCoupon.code || ''} onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})}/>
-                          <input placeholder="Potongan (Rp)" type="number" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newCoupon.discountAmount || ''} onChange={e => setNewCoupon({...newCoupon, discountAmount: Number(e.target.value)})}/>
-                          <button onClick={handleAddCoupon} className="bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus size={18}/> Buat Kupon</button>
-                      </div>
-                  </div>
-
-                  <div className="space-y-4">
-                      {coupons.length === 0 && <p className="text-gray-500 text-center">Belum ada kupon.</p>}
-                      {coupons.map(c => (
-                          <div key={c.id} className="bg-dark-card border border-white/5 p-4 rounded-2xl flex justify-between items-center">
-                              <div>
-                                  <h4 className="text-white font-bold text-lg tracking-wider">{c.code}</h4>
-                                  <p className="text-gray-400 text-sm">Diskon Rp {c.discountAmount.toLocaleString()}</p>
-                              </div>
-                              <button onClick={() => handleDeleteCoupon(c.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={18}/></button>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-          )}
-
-          {activeTab === 'reports' && (
-              <div className="animate-fade-in space-y-4">
-                  <h3 className="text-white font-bold text-xl mb-4">Laporan Masuk ({reports.length})</h3>
-                  {reports.length === 0 ? (
-                      <div className="text-center p-12 bg-dark-card rounded-2xl border border-white/5 text-gray-500">Tidak ada laporan.</div>
-                  ) : (
-                      reports.map(r => (
-                          <div key={r.id} className="bg-dark-card border border-white/5 p-4 rounded-2xl flex flex-col md:flex-row gap-4 justify-between items-start">
-                              <div>
-                                  <div className="flex items-center gap-2 mb-2">
-                                      <span className="bg-red-500/20 text-red-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{r.targetType}</span>
-                                      <span className="text-gray-400 text-xs">{new Date(r.createdAt).toLocaleString()}</span>
-                                  </div>
-                                  <p className="text-white font-bold">{r.reason}</p>
-                                  <p className="text-gray-400 text-sm mt-1">{r.description}</p>
-                                  <p className="text-xs text-gray-500 mt-2">Reporter ID: {r.reporterId} • Target ID: {r.targetId}</p>
-                              </div>
-                              <div className="flex gap-2">
-                                  <button onClick={() => handleDeleteReport(r.id)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-bold">Hapus / Selesai</button>
-                              </div>
-                          </div>
-                      ))
-                  )}
-              </div>
-          )}
-
+          {/* TAB: STORES (RESTORED) */}
           {activeTab === 'stores' && (
               <div className="animate-fade-in space-y-6">
                   {manualExpId && (
@@ -802,7 +827,35 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-           {activeTab === 'logs' && (
+          {/* TAB: REPORTS (RESTORED) */}
+          {activeTab === 'reports' && (
+              <div className="animate-fade-in space-y-4">
+                  <h3 className="text-white font-bold text-xl mb-4">Laporan Masuk ({reports.length})</h3>
+                  {reports.length === 0 ? (
+                      <div className="text-center p-12 bg-dark-card rounded-2xl border border-white/5 text-gray-500">Tidak ada laporan.</div>
+                  ) : (
+                      reports.map(r => (
+                          <div key={r.id} className="bg-dark-card border border-white/5 p-4 rounded-2xl flex flex-col md:flex-row gap-4 justify-between items-start">
+                              <div>
+                                  <div className="flex items-center gap-2 mb-2">
+                                      <span className="bg-red-500/20 text-red-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{r.targetType}</span>
+                                      <span className="text-gray-400 text-xs">{new Date(r.createdAt).toLocaleString()}</span>
+                                  </div>
+                                  <p className="text-white font-bold">{r.reason}</p>
+                                  <p className="text-gray-400 text-sm mt-1">{r.description}</p>
+                                  <p className="text-xs text-gray-500 mt-2">Reporter ID: {r.reporterId} • Target ID: {r.targetId}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                  <button onClick={() => handleDeleteReport(r.id)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-bold">Hapus / Selesai</button>
+                              </div>
+                          </div>
+                      ))
+                  )}
+              </div>
+          )}
+
+          {/* TAB: LOGS (RESTORED) */}
+          {activeTab === 'logs' && (
               <div className="animate-fade-in bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
                   <div className="p-6 border-b border-white/5 flex justify-between items-center">
                       <h3 className="text-white font-bold">Audit Logs (System History)</h3>
@@ -819,7 +872,8 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                   </div>
               </div>
           )}
-          
+
+          {/* TAB: SETTINGS (RESTORED) */}
           {activeTab === 'settings' && siteProfile && (
             <div className="animate-fade-in space-y-8">
                 <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
@@ -857,8 +911,9 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                 </div>
             </div>
           )}
-        </div>
-      </div>
+
+          </div>
+      </main>
     </div>
   );
 };
