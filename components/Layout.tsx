@@ -4,10 +4,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Menu, X, User as UserIcon, LogOut, Shield, Headset, Bell, Gamepad2, Home, Search, ShoppingCart, Users, Store, Globe } from 'lucide-react';
+import { Menu, X, User as UserIcon, LogOut, Shield, Headset, Bell, Gamepad2, Home, Search, ShoppingCart, Users, Store, Globe, Download, Smartphone } from 'lucide-react';
 import { APP_NAME, COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
+import { useToast } from './Toast';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,9 +22,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   const [cartCount, setCartCount] = useState(0);
   const [siteLogo, setSiteLogo] = useState<string>('');
   const [siteName, setSiteName] = useState<string>('Tamaonlyone Store');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
+  const { addToast } = useToast();
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -39,6 +43,18 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         document.title = currentName;
     };
     fetchProfile();
+
+    // PWA Install Prompt Listener
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      console.log("Install prompt captured");
+    });
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        setIsAppInstalled(true);
+    }
   }, [location.pathname]);
 
   // REAL-TIME NOTIFICATIONS
@@ -76,6 +92,25 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
 
   const handleCsClick = () => {
      if(!user) navigate('/login'); else navigate('/chat?type=support');
+  };
+
+  const handleInstallApp = async () => {
+    if (isAppInstalled) {
+        addToast("Aplikasi sudah terinstal.", "success");
+        return;
+    }
+
+    if (!deferredPrompt) {
+        // Fallback Instruction for iOS or when prompt is not available
+        addToast("Untuk Instal: Klik Menu Browser (Titik 3 / Share) > 'Tambahkan ke Layar Utama' (Add to Home Screen).", "info");
+        return;
+    }
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+    }
   };
   
   const isActive = (path: string) => location.pathname === path;
@@ -128,8 +163,15 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                    </Link>
                 )}
                 
+                {/* Desktop Install Button - ALWAYS VISIBLE for testing */}
+                {!isAppInstalled && (
+                    <button onClick={handleInstallApp} className="px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 text-green-400 hover:bg-green-500/10 ml-2 border border-green-500/20">
+                         <Download size={18} /> App
+                    </button>
+                )}
+
                 {user ? (
-                  <div className="flex items-center gap-4 ml-6 pl-6 border-l border-white/10">
+                  <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/10">
                     <Link to="/cart" className="relative group cursor-pointer text-gray-300 hover:text-white p-2">
                         <ShoppingCart size={20} />
                         {cartCount > 0 && (
@@ -214,6 +256,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
               )}
               
               {isAdmin && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Panel Admin</Link>}
+
+              {/* Install App Button Mobile - ALWAYS VISIBLE */}
+              {!isAppInstalled && (
+                  <button onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-green-400 bg-green-500/10 hover:bg-green-500/20 flex items-center gap-2 border border-green-500/20">
+                      <Download size={18} /> Install Aplikasi
+                  </button>
+              )}
               
               {user ? (
                 <>
@@ -257,6 +306,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                   <span className="font-bold text-xl text-white">{renderLogoText(siteName)}</span>
               </div>
               <p className="text-gray-500 text-sm">The most trusted digital store for your daily needs. Fast, secure, and reliable.</p>
+              
+              {/* Footer Install Button - Always Visible */}
+              {!isAppInstalled && (
+                  <button onClick={handleInstallApp} className="mt-4 px-4 py-2 bg-white/5 hover:bg-white/10 text-green-400 rounded-lg text-xs font-bold flex items-center gap-2 border border-white/10 mx-auto md:mx-0">
+                      <Smartphone size={14}/> Download Aplikasi
+                  </button>
+              )}
           </div>
           <div>
               <h4 className="font-bold text-white mb-4">Metode Pembayaran</h4>

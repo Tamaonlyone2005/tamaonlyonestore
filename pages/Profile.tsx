@@ -23,6 +23,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
   const [myLogs, setMyLogs] = useState<ActivityLog[]>([]);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -54,6 +55,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         setMyLogs(logs.filter(l => l.userId === user.id));
     };
     loadData();
+
+    // Listen for install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
   }, [user, navigate]);
 
   const handleChangePassword = async () => {
@@ -125,6 +132,18 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               addToast("Gagal upload bukti.", "error");
           }
       }
+  };
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) {
+        addToast("App sudah terinstall atau tidak didukung browser ini.", "info");
+        return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+    }
   };
 
   const handleLogout = () => {
@@ -222,6 +241,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       
                       <div className="my-2 border-t border-white/5"></div>
                       
+                      {deferredPrompt && (
+                          <button onClick={handleInstallApp} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-green-400 hover:bg-green-500/10 transition-all">
+                              <Download size={18}/> Install Aplikasi
+                          </button>
+                      )}
+
                       {!isAdmin && !currentUser.isSeller && (
                           <button onClick={() => navigate('/open-store')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-purple-400 hover:bg-purple-500/10 transition-all">
                               <Store size={18}/> Buka Toko
@@ -295,7 +320,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                       </div>
                                       <div className="text-right">
                                           <p className="text-brand-400 font-bold text-xl">Rp {order.price.toLocaleString()}</p>
-                                          <p className="text-xs text-gray-500">{order.variantName || 'Regular'}</p>
+                                          <p className="text-xs text-gray-500">{order.variantName || 'Regular Pack'}</p>
                                       </div>
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
