@@ -4,9 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
 import { Product, User, CartItem, ProductVariant, Report } from '../types';
 import { useToast } from '../components/Toast';
-import { ShoppingCart, ArrowRight, Info, Search, Filter, ArrowUpDown, Clock, Zap, Flag, Share2, Ticket } from 'lucide-react';
+import { ShoppingCart, ArrowRight, Info, Search, Filter, ArrowUpDown, Clock, Flag, Ticket } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
-import ReviewSection from '../components/ReviewSection';
 
 interface ShopProps {
   user: User | null;
@@ -145,7 +144,7 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
 
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                
-               {/* MAIN COLUMN: HEADER, DESC, REVIEWS */}
+               {/* MAIN COLUMN: HEADER, DESC */}
                <div className="lg:col-span-2 space-y-6">
                    {/* 1. UNIFIED HEADER CARD (Photo + Info + Desc) */}
                    <div className="bg-[#1e293b] rounded-2xl p-6 border border-white/5 shadow-xl animate-fade-in relative">
@@ -189,9 +188,6 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                            </button>
                        </div>
                    </div>
-
-                   {/* Reviews Section */}
-                   <ReviewSection productId={activeProduct.id} currentUser={user} />
                </div>
 
                {/* RIGHT COLUMN: CONFIGURATION */}

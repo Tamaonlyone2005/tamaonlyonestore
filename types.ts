@@ -259,6 +259,16 @@ export interface Report {
   createdAt: string;
 }
 
+// Archive Interface for History Recap
+export interface Archive {
+    id: string;
+    date: string;
+    type: 'WEEKLY_CLEANUP';
+    dataCount: number;
+    sizeKB: number;
+    content: string; // JSON stringified data of deleted logs/orders
+}
+
 // Konfigurasi Level Toko
 export const STORE_LEVELS = [
   { level: 1, expRequired: 0, maxProducts: 5 },

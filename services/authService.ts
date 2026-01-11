@@ -16,7 +16,8 @@ export const AuthService = {
       let userData = await StorageService.findUser(firebaseUser.uid);
 
       if (!userData) {
-          // Fallback creation for legacy users without DB entry
+          // Jika user ada di Auth tapi tidak ada di DB (Kasus jarang/Legacy)
+          // Default ke MEMBER. Tidak ada auto-admin disini.
           userData = {
               id: firebaseUser.uid,
               username: firebaseUser.displayName || email.split('@')[0],
@@ -43,13 +44,8 @@ export const AuthService = {
           return { success: false, message: 'Akun ditangguhkan. Hubungi support.' };
       }
 
-      // AUTO-PROMOTE OWNER
-      if (userData.email === 'aldipranatapratama2005@gmail.com') {
-          userData.role = UserRole.ADMIN;
-          userData.isVip = true;
-          userData.vipLevel = VipLevel.GOLD;
-          await StorageService.saveUser(userData);
-      }
+      // SECURITY FIX: Menghapus pengecekan email hardcoded untuk Admin.
+      // Role sepenuhnya diambil dari database (userData.role).
 
       StorageService.setSession(userData);
       await StorageService.logActivity(userData.id, userData.username, 'LOGIN', 'Login via Email');
@@ -78,7 +74,7 @@ export const AuthService = {
           id: firebaseUser.uid,
           username: username,
           email: email,
-          role: UserRole.MEMBER,
+          role: UserRole.MEMBER, // Default selalu MEMBER
           avatar: avatar,
           points: 0, 
           isVerified: false,
@@ -120,7 +116,7 @@ export const AuthService = {
                   role: UserRole.MEMBER,
                   avatar: firebaseUser.photoURL || '',
                   points: 0,
-                  isVerified: true,
+                  isVerified: true, // Google login auto verified email usually
                   isBanned: false,
                   isVip: false,
                   vipLevel: VipLevel.NONE,
@@ -136,10 +132,7 @@ export const AuthService = {
           
           if (userData.isBanned) return { success: false, message: 'Akun ditangguhkan.' };
           
-          if (userData.email === 'aldipranatapratama2005@gmail.com') {
-              userData.role = UserRole.ADMIN;
-              await StorageService.saveUser(userData);
-          }
+          // SECURITY FIX: Menghapus pengecekan hardcoded admin disini juga.
 
           StorageService.setSession(userData);
           return { success: true, message: `Halo ${userData.username}!`, user: userData };

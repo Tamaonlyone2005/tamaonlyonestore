@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Bell, ShoppingCart, LogOut, Shield, Store, Download, Search, Menu, X, Home, Gamepad2, Users } from 'lucide-react';
+import { Bell, ShoppingCart, LogOut, Shield, Store, Search, Menu, X, Home, Gamepad2, Users } from 'lucide-react';
 import { APP_NAME, COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
@@ -21,8 +21,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   const [cartCount, setCartCount] = useState(0);
   const [siteLogo, setSiteLogo] = useState<string>('');
   const [siteName, setSiteName] = useState<string>('Tamaonlyone Store');
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   
   const navigate = useNavigate();
@@ -46,15 +44,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         setSiteName(currentName);
     };
     fetchProfile();
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    });
-
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        setIsAppInstalled(true);
-    }
 
     return () => window.removeEventListener('scroll', handleScroll);
   }, [location.pathname]);
@@ -80,24 +69,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
     };
   }, [user]);
 
-  const handleLogout = () => {
-    AuthService.logout();
-    refreshSession();
-    navigate('/');
-  };
-
-  const handleInstallApp = async () => {
-    if (isAppInstalled) {
-        addToast("Aplikasi sudah terinstal.", "success");
-        return;
-    }
-    if (!deferredPrompt) {
-        addToast("Klik 'Share' > 'Add to Home Screen' pada browser Anda.", "info");
-        return;
-    }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setDeferredPrompt(null);
+  const handleLogout = async () => {
+    // FIX: Force reload to Login to clear all states and prevent redirect to Home
+    await AuthService.logout();
+    window.location.href = '/#/login';
+    window.location.reload();
   };
   
   const isActive = (path: string) => location.pathname === path;
@@ -149,12 +125,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
 
             {/* Desktop Actions */}
             <div className="flex items-center gap-4">
-                {!isAppInstalled && (
-                    <button onClick={handleInstallApp} className="px-4 py-2 rounded-full text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-all flex items-center gap-2">
-                         <Download size={14} /> App
-                    </button>
-                )}
-                
                 {user ? (
                   <div className="flex items-center gap-4 pl-6 border-l border-white/10">
                     <Link to="/cart" className="relative p-2 text-gray-300 hover:text-white transition-colors">
@@ -162,8 +132,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                         {cartCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-brand-600 rounded-full text-[10px] flex items-center justify-center text-white border-2 border-[#0f172a]">{cartCount}</span>}
                     </Link>
 
-                    <div className="relative cursor-pointer p-2 text-gray-300 hover:text-white transition-colors" onClick={() => navigate(isAdmin ? '/admin' : '/profile')}>
-                        <Bell size={22} />
+                    {/* Notification Logic: Admin = Shield (Dashboard), Member = Bell (Profile) */}
+                    <div 
+                        className="relative cursor-pointer p-2 text-gray-300 hover:text-white transition-colors" 
+                        onClick={() => navigate(isAdmin ? '/admin' : '/profile')}
+                        title={isAdmin ? "Panel Admin" : "Notifikasi"}
+                    >
+                        {isAdmin ? <Shield size={22} className="text-brand-400"/> : <Bell size={22} />}
                         {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white border-2 border-[#0f172a] animate-pulse">{unreadCount}</span>}
                     </div>
 
@@ -231,8 +206,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                               {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-brand-600 rounded-full text-[9px] flex items-center justify-center text-white border-2 border-[#0f172a]">{cartCount}</span>}
                           </Link>
                           {isAdmin && (
-                              <Link to="/admin" className="p-2 bg-brand-600/20 text-brand-400 rounded-full">
+                              <Link to="/admin" className="p-2 bg-brand-600/20 text-brand-400 rounded-full relative">
                                   <Shield size={20}/>
+                                  {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center text-white border-2 border-[#0f172a]">{unreadCount}</span>}
                               </Link>
                           )}
                       </>
@@ -259,11 +235,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                   <span className="font-bold text-xl text-white">{renderLogoText(siteName)}</span>
               </div>
               <p className="text-gray-500 text-sm leading-relaxed mb-6">Platform top up game dan produk digital terpercaya dengan proses otomatis 24 jam.</p>
-              {!isAppInstalled && (
-                  <button onClick={handleInstallApp} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/10 transition-colors">
-                      <Download size={16}/> Download Aplikasi PC
-                  </button>
-              )}
           </div>
           
           <div>

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../services/authService';
-import { Lock, Mail, Eye, EyeOff, Loader2, Chrome, KeyRound, ArrowLeft } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, Loader2, KeyRound, ArrowLeft } from 'lucide-react';
 import { useToast } from '../components/Toast';
 
 interface LoginProps {
@@ -33,19 +33,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       else navigate('/shop');
     } else {
       setError(res.message);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    const res = await AuthService.loginWithGoogle();
-    setLoading(false);
-
-    if (res.success) {
-        onLogin();
-        navigate('/shop');
-    } else {
-        setError(res.message);
     }
   };
   
@@ -147,20 +134,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             {loading ? <Loader2 className="animate-spin"/> : "Sign In"}
           </button>
         </form>
-
-        <div className="my-8 flex items-center gap-4">
-            <div className="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent flex-1"></div>
-            <span className="text-gray-500 text-xs font-bold uppercase">Or</span>
-            <div className="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent flex-1"></div>
-        </div>
-
-        <button 
-            onClick={handleGoogleLogin} 
-            disabled={loading}
-            className="w-full bg-white text-gray-900 font-bold py-3.5 rounded-2xl hover:bg-gray-100 transition-all flex items-center justify-center gap-3 shadow-lg hover:scale-[1.02]"
-        >
-            <Chrome size={20} className="text-blue-600"/> Continue with Google
-        </button>
 
         <p className="mt-8 text-center text-sm text-gray-500 font-medium">
             Belum punya akun? <Link to="/register" className="text-brand-400 hover:text-brand-300 font-bold underline decoration-brand-500/30">Daftar Member</Link>

@@ -1,14 +1,13 @@
 
 import { db, initializationSuccessful } from './firebase';
-import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc } from "firebase/firestore";
-import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS } from '../types';
+import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc, writeBatch } from "firebase/firestore";
+import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive } from '../types';
 import { DEFAULT_PROFILE, ADMIN_ID } from '../constants';
 
 let isRemoteEnabled = initializationSuccessful && !!db;
 
 const handleRemoteError = (error: any) => {
-    const msg = error?.message || '';
-    console.error("Firestore/Network Error:", error);
+    console.error("Firestore Error:", error);
 };
 
 export const compressImage = (file: File, maxSizeKB: number = 500): Promise<string> => {
@@ -66,6 +65,7 @@ const cleanData = (obj: any): any => {
     return newObj;
 };
 
+// Session Helper (Only for persisting ID across reloads, not Data Storage)
 const safeJSONParse = <T>(key: string, fallback: T): T => {
     try {
         const item = localStorage.getItem(key);
@@ -76,28 +76,21 @@ const safeJSONParse = <T>(key: string, fallback: T): T => {
     }
 };
 
+// Strict Remote Collection Fetcher
 const getCollection = async <T>(colName: string): Promise<T[]> => {
-    if (!isRemoteEnabled || !db) return getLocalFallback<T>(colName);
+    if (!isRemoteEnabled || !db) {
+        return []; 
+    }
     try {
         const snap = await getDocs(collection(db, colName));
         return snap.docs.map(d => d.data() as T);
     } catch (error) {
         handleRemoteError(error);
-        return getLocalFallback<T>(colName);
+        return [];
     }
 };
 
 const setDocument = async (colName: string, docId: string, data: any) => {
-    try {
-        const key = `local_fallback_${colName}`;
-        const existing = safeJSONParse<any[]>(key, []);
-        const idx = existing.findIndex((i: any) => i.id === docId);
-        const dataCopy = JSON.parse(JSON.stringify(data));
-        if (idx >= 0) existing[idx] = dataCopy;
-        else existing.push(dataCopy);
-        localStorage.setItem(key, JSON.stringify(existing));
-    } catch(e) {}
-
     if (isRemoteEnabled && db) {
         try {
             await setDoc(doc(db, colName, docId), cleanData(data));
@@ -109,20 +102,13 @@ const setDocument = async (colName: string, docId: string, data: any) => {
 
 const deleteDocument = async (colName: string, docId: string) => {
     if (!docId) return;
-    try {
-        const key = `local_fallback_${colName}`;
-        let existing = safeJSONParse<any[]>(key, []);
-        existing = existing.filter((i: any) => i.id !== docId);
-        localStorage.setItem(key, JSON.stringify(existing));
-    } catch(e) {}
     if (isRemoteEnabled && db) {
         try { await deleteDoc(doc(db, colName, docId)); } catch(e) { handleRemoteError(e); }
     }
 };
 
-const getLocalFallback = <T>(colName: string): T[] => safeJSONParse<T[]>(`local_fallback_${colName}`, []);
-
 export const StorageService = {
+  // Session management
   getSession: (): User | null => safeJSONParse<User | null>('tama_session', null),
   setSession: (user: User) => localStorage.setItem('tama_session', JSON.stringify(user)),
   clearSession: () => localStorage.removeItem('tama_session'),
@@ -135,43 +121,48 @@ export const StorageService = {
             if (snap.exists()) return snap.data() as SiteProfile;
         } catch(e) { handleRemoteError(e); }
     }
-    return safeJSONParse<SiteProfile>('local_fallback_profile', DEFAULT_PROFILE);
+    return DEFAULT_PROFILE;
   },
   saveProfile: async (profile: SiteProfile) => {
-      localStorage.setItem('local_fallback_profile', JSON.stringify(profile));
-      if (isRemoteEnabled && db) {
-          try { await setDoc(doc(db, 'config', 'profile'), cleanData(profile)); } catch(e) { handleRemoteError(e); }
-      }
+      await setDocument('config', 'profile', profile);
   },
 
   getUsers: async (): Promise<User[]> => {
-      const res = await getCollection<User>('users');
-      return res;
+      return await getCollection<User>('users');
   },
   saveUser: async (user: User) => {
       await setDocument('users', user.id, user);
+      // Update session if it's the current user to keep local consistent with DB
       const session = StorageService.getSession();
       if(session && session.id === user.id) StorageService.setSession(user);
   },
   deleteUser: async (id: string) => { await deleteDocument('users', id); },
+  
   findUser: async (identifier: string): Promise<User | undefined> => {
+      if (!identifier) return undefined;
+      if (isRemoteEnabled && db) {
+          try {
+             const docRef = doc(db, 'users', identifier);
+             const docSnap = await getDoc(docRef);
+             if (docSnap.exists()) {
+                 return docSnap.data() as User;
+             }
+          } catch (e) { }
+      }
       const users = await StorageService.getUsers();
-      // Support ID or Username only (removed shortId)
       return users.find(u => u.id === identifier || u.username === identifier);
   },
   
   registerSeller: async (userId: string, storeName: string, description: string) => {
       const user = await StorageService.findUser(userId);
       if(!user) return false;
-      
       user.isSeller = true;
       user.storeName = storeName;
       user.storeDescription = description;
       user.storeRating = 0;
       user.storeStatus = StoreStatus.ACTIVE;
-      user.storeLevel = 1; // Default Level 1
+      user.storeLevel = 1; 
       user.storeExp = 0;
-      
       await StorageService.saveUser(user);
       await StorageService.logActivity(userId, user.username, "OPEN_STORE", `Membuka toko baru: ${storeName}`);
       return true;
@@ -197,13 +188,11 @@ export const StorageService = {
   deleteStore: async (userId: string) => {
       const user = await StorageService.findUser(userId);
       if(!user) return;
-      
       const storeName = user.storeName;
       user.isSeller = false;
       user.storeName = undefined;
       user.storeDescription = undefined;
       user.storeStatus = undefined;
-      
       await StorageService.saveUser(user);
       const allProducts = await StorageService.getProducts();
       const sellerProducts = allProducts.filter(p => p.sellerId === userId);
@@ -219,7 +208,6 @@ export const StorageService = {
       if(!follower || !target) return false;
       if(!follower.following) follower.following = [];
       if(!target.followers) target.followers = [];
-      
       if(follower.following.includes(targetId)) return false; 
       follower.following.push(targetId);
       target.followers.push(followerId);
@@ -246,28 +234,19 @@ export const StorageService = {
               return snap.docs.map(d => d.data() as CartItem);
           } catch(e) { handleRemoteError(e); }
       }
-      return safeJSONParse<CartItem[]>(`local_fallback_cart_${userId}`, []);
+      return [];
   },
   addToCart: async (userId: string, item: CartItem) => {
-      const key = `local_fallback_cart_${userId}`;
-      const existing = safeJSONParse<CartItem[]>(key, []);
-      existing.push(item);
-      localStorage.setItem(key, JSON.stringify(existing));
       if (isRemoteEnabled && db) {
           try { await setDoc(doc(db, `carts/${userId}/items`, item.id), cleanData(item)); } catch(e) { handleRemoteError(e); }
       }
   },
   removeFromCart: async (userId: string, itemId: string) => {
-      const key = `local_fallback_cart_${userId}`;
-      let existing = safeJSONParse<CartItem[]>(key, []);
-      existing = existing.filter((i: CartItem) => i.id !== itemId);
-      localStorage.setItem(key, JSON.stringify(existing));
       if (isRemoteEnabled && db) {
           try { await deleteDoc(doc(db, `carts/${userId}/items`, itemId)); } catch(e) { handleRemoteError(e); }
       }
   },
   clearCart: async (userId: string) => {
-      localStorage.removeItem(`local_fallback_cart_${userId}`);
       if (isRemoteEnabled && db) {
           try {
               const snap = await getDocs(collection(db, `carts/${userId}/items`));
@@ -277,17 +256,12 @@ export const StorageService = {
   },
 
   getProducts: async (): Promise<Product[]> => {
-      let products = await getCollection<Product>('products');
-      if (products.length === 0) products = [];
-      return products;
+      return await getCollection<Product>('products');
   },
   
-  // Combine Admin products (Top) and Seller products (Bottom)
   getGlobalProducts: async (): Promise<Product[]> => {
       const all = await StorageService.getProducts();
-      // Admin products first (no sellerId)
       const adminProducts = all.filter(p => !p.sellerId);
-      // Member products (sorted by id/date desc usually)
       const sellerProducts = all.filter(p => p.sellerId);
       return [...adminProducts, ...sellerProducts];
   },
@@ -307,7 +281,6 @@ export const StorageService = {
               await updateDoc(productRef, { isBoosted });
           } catch(e) { handleRemoteError(e); }
       }
-      // Log for admin
       await StorageService.logActivity(ADMIN_ID, "Administrator", "PRODUCT_BOOST", `Mengubah status boost produk ${productId} menjadi ${isBoosted}`);
   },
 
@@ -315,10 +288,7 @@ export const StorageService = {
       return await getCollection<Order>('orders');
   },
   subscribeToOrders: (callback: (orders: Order[]) => void) => {
-      if (!isRemoteEnabled || !db) {
-          StorageService.getOrders().then(callback);
-          return () => {};
-      }
+      if (!isRemoteEnabled || !db) return () => {};
       try {
           const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
           return onSnapshot(q, (snap) => {
@@ -341,46 +311,31 @@ export const StorageService = {
       }
   },
   updateOrderStatus: async (orderId: string, status: OrderStatus, adminName: string) => {
-      // Fetch order first to get sellerId
-      let order: Order | undefined;
       if (isRemoteEnabled && db) {
           const snap = await getDoc(doc(db, 'orders', orderId));
-          if(snap.exists()) order = snap.data() as Order;
+          const order = snap.exists() ? snap.data() as Order : null;
           
           try {
               const orderRef = doc(db, 'orders', orderId);
               await updateDoc(orderRef, { status });
           } catch(e) { handleRemoteError(e); }
-      } else {
-          // Local fallback
-          const allOrders = await StorageService.getOrders();
-          order = allOrders.find(o => o.id === orderId);
-          if (order) {
-              order.status = status;
-              await setDocument('orders', orderId, order);
-          }
-      }
 
-      // STORE LEVELING LOGIC: If Completed, add EXP to Seller
-      if (status === OrderStatus.COMPLETED && order && order.sellerId) {
-          const seller = await StorageService.findUser(order.sellerId);
-          if (seller && seller.isSeller) {
-              const expGain = 10; // 10 EXP per successful transaction
-              seller.storeExp = (seller.storeExp || 0) + expGain;
-              
-              // Check Level Up
-              const currentLevel = seller.storeLevel || 1;
-              const nextLevelData = STORE_LEVELS.find(l => l.level === currentLevel + 1);
-              
-              if (nextLevelData && seller.storeExp >= nextLevelData.expRequired) {
-                  seller.storeLevel = nextLevelData.level;
-                  // Auto verify badge at Level 3? Maybe logic for later.
+          if (status === OrderStatus.COMPLETED && order && order.sellerId) {
+              const seller = await StorageService.findUser(order.sellerId);
+              if (seller && seller.isSeller) {
+                  const expGain = 10;
+                  seller.storeExp = (seller.storeExp || 0) + expGain;
+                  
+                  const currentLevel = seller.storeLevel || 1;
+                  const nextLevelData = STORE_LEVELS.find(l => l.level === currentLevel + 1);
+                  
+                  if (nextLevelData && seller.storeExp >= nextLevelData.expRequired) {
+                      seller.storeLevel = nextLevelData.level;
+                  }
+                  await StorageService.saveUser(seller);
               }
-              
-              await StorageService.saveUser(seller);
           }
       }
-
       await StorageService.logActivity(adminName, adminName, "ORDER_UPDATE", `Mengubah status Order #${orderId} menjadi ${status}`);
   },
 
@@ -394,8 +349,6 @@ export const StorageService = {
       const user = await StorageService.findUser(userId);
       if (user && user.role === UserRole.ADMIN) {
           finalUsername = "Administrator";
-      } else if (username.toLowerCase().includes('admin') || userId === ADMIN_ID) {
-          finalUsername = "Administrator";
       }
 
       const log: ActivityLog = { id: Date.now().toString() + Math.random(), userId, username: finalUsername, action, details, timestamp: new Date().toISOString() };
@@ -403,10 +356,7 @@ export const StorageService = {
   },
 
   subscribeToChats: (callback: (chats: ChatMessage[]) => void) => {
-      if (!isRemoteEnabled || !db) {
-          callback(getLocalFallback<ChatMessage>('chats'));
-          return () => {};
-      }
+      if (!isRemoteEnabled || !db) return () => {};
       try {
           const q = query(collection(db, 'chats'), orderBy('timestamp', 'asc'));
           return onSnapshot(q, (snap) => callback(snap.docs.map(d => d.data() as ChatMessage)));
@@ -488,8 +438,68 @@ export const StorageService = {
 
   createServiceRequest: async (req: ServiceRequest) => { await setDocument('service_requests', req.id, req); },
 
-  // REPORT SYSTEM
   createReport: async (report: Report) => { await setDocument('reports', report.id, report); },
   getReports: async (): Promise<Report[]> => getCollection<Report>('reports'),
-  deleteReport: async (id: string) => { await deleteDocument('reports', id); }
+  deleteReport: async (id: string) => { await deleteDocument('reports', id); },
+
+  // AUTOMATED CLEANUP & ARCHIVES
+  getArchives: async (): Promise<Archive[]> => getCollection<Archive>('archives'),
+  
+  runWeeklyCleanup: async (): Promise<{cleanedLogs: number, cleanedOrders: number}> => {
+      if (!isRemoteEnabled || !db) return { cleanedLogs: 0, cleanedOrders: 0 };
+      
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const cutoffISO = oneWeekAgo.toISOString();
+
+      try {
+          const batch = writeBatch(db);
+          let opCount = 0;
+          let deletedData: any[] = [];
+
+          // 1. Get Old Logs (Single field query)
+          const logSnap = await getDocs(query(collection(db, 'logs'), where('timestamp', '<', cutoffISO)));
+          logSnap.forEach(doc => {
+              deletedData.push({ type: 'LOG', ...doc.data() });
+              batch.delete(doc.ref);
+              opCount++;
+          });
+
+          // 2. Get Old Completed/Cancelled Orders (Optimize: Query by date only, filter status in code to avoid composite index)
+          const orderSnap = await getDocs(query(collection(db, 'orders'), where('createdAt', '<', cutoffISO)));
+          orderSnap.forEach(doc => {
+              const data = doc.data() as Order;
+              // Filter status locally
+              if (data.status === OrderStatus.COMPLETED || data.status === OrderStatus.CANCELLED) {
+                  deletedData.push({ type: 'ORDER', ...data });
+                  batch.delete(doc.ref);
+                  opCount++;
+              }
+          });
+
+          if (opCount > 0) {
+              // Create Archive
+              const archiveId = `arch_${Date.now()}`;
+              const archiveContent = JSON.stringify(deletedData);
+              const archive: Archive = {
+                  id: archiveId,
+                  date: new Date().toISOString(),
+                  type: 'WEEKLY_CLEANUP',
+                  dataCount: opCount,
+                  sizeKB: Math.round(archiveContent.length / 1024),
+                  content: archiveContent
+              };
+              
+              const archiveRef = doc(db, 'archives', archiveId);
+              batch.set(archiveRef, archive);
+              
+              await batch.commit();
+              console.log(`Cleanup complete. Archived ${opCount} items.`);
+              return { cleanedLogs: logSnap.size, cleanedOrders: opCount - logSnap.size };
+          }
+      } catch (e) {
+          console.error("Cleanup failed:", e);
+      }
+      return { cleanedLogs: 0, cleanedOrders: 0 };
+  }
 };

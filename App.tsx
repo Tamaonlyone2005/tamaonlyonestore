@@ -24,12 +24,33 @@ const App: React.FC = () => {
   const [profile, setProfile] = useState<SiteProfile | null>(null);
 
   useEffect(() => {
-    refreshSession();
-    // Load config for Maintenance check
-    StorageService.getProfile().then(setProfile);
+    const initSession = async () => {
+        let session = StorageService.getSession();
+        
+        // ADMIN ROLE FIX: Force fetch latest data from DB to ensure Role is updated
+        if (session) {
+            try {
+                // Now findUser uses getDoc which is direct and fast
+                const freshUser = await StorageService.findUser(session.id);
+                if (freshUser) {
+                    // Update Local Storage with fresh data
+                    StorageService.setSession(freshUser);
+                    session = freshUser;
+                    console.log("Session Synced. Current Role:", freshUser.role);
+                }
+            } catch (e) {
+                console.error("Failed to sync session with remote:", e);
+            }
+        }
+        
+        setUser(session);
+        StorageService.getProfile().then(setProfile);
+    };
+    initSession();
   }, []);
 
   const refreshSession = () => {
+    // Re-read from storage (which should be updated by login/logout)
     const session = StorageService.getSession();
     setUser(session);
   };

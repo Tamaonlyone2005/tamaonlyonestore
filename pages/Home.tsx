@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import NewsTicker from '../components/NewsTicker';
 import FlashSale from '../components/FlashSale';
-import { ChevronRight, ShieldCheck, Gamepad2, Ticket, Package, Zap, Smartphone, Monitor, Globe, Wallet, Plus } from 'lucide-react';
+import { ChevronRight, Package, Wallet, History, Gamepad2, Smartphone, Monitor, Ticket, Zap, Globe, Grid, Lock } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
 
 const Home: React.FC = () => {
@@ -29,164 +29,155 @@ const Home: React.FC = () => {
 
   const latestProducts = products.slice(0, 8); 
 
-  // Quick Menu Icons for Mobile App Feel
-  const quickMenus = [
-      { label: 'Mobile Games', icon: Gamepad2, color: 'bg-purple-500', filter: 'ITEM' },
-      { label: 'Pulsa & Data', icon: Smartphone, color: 'bg-green-500', filter: 'VOUCHER' },
-      { label: 'PC Games', icon: Monitor, color: 'bg-blue-500', filter: 'ITEM' },
-      { label: 'Voucher', icon: Ticket, color: 'bg-orange-500', filter: 'VOUCHER' },
-      { label: 'Jasa Joki', icon: Zap, color: 'bg-yellow-500', filter: 'JOKI' },
-      { label: 'Top Up', icon: Wallet, color: 'bg-pink-500', filter: 'OTHER' },
-      { label: 'Web Apps', icon: Globe, color: 'bg-cyan-500', filter: 'OTHER' },
-      { label: 'Lainnya', icon: Package, color: 'bg-gray-500', filter: 'ALL' },
+  // Grid Menu Data with Lock Status
+  const menuItems = [
+      { name: 'Mobile Games', icon: Gamepad2, color: 'text-purple-400', bg: 'bg-purple-500/10', locked: true },
+      { name: 'Pulsa & Data', icon: Smartphone, color: 'text-green-400', bg: 'bg-green-500/10', locked: true },
+      { name: 'PC Games', icon: Monitor, color: 'text-blue-400', bg: 'bg-blue-500/10', locked: true },
+      { name: 'Voucher', icon: Ticket, color: 'text-orange-400', bg: 'bg-orange-500/10', locked: true },
+      { name: 'Jasa Joki', icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-500/10', locked: true },
+      { name: 'Top Up', icon: Wallet, color: 'text-pink-400', bg: 'bg-pink-500/10', locked: true },
+      { name: 'Web Apps', icon: Globe, color: 'text-cyan-400', bg: 'bg-cyan-500/10', locked: true },
+      { name: 'Lainnya', icon: Grid, color: 'text-gray-400', bg: 'bg-gray-500/10', locked: true },
   ];
 
   return (
     <div className="min-h-screen bg-[#0f172a] pb-24 md:pb-20">
       
-      {/* --- WEB COMPONENT: NEWS TICKER (Hidden on Mobile) --- */}
-      <div className="hidden md:block">
-        <NewsTicker />
-      </div>
-
-      {/* =================================================================================
-          1. WEB VIEW (DESKTOP) - Banner Besar & Deskripsi (Reverted to Original)
-         ================================================================================= */}
-      <section className="hidden md:flex relative h-[450px] bg-[#1e293b] overflow-hidden items-center">
-         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-[#0f172a] to-[#0f172a] z-0"></div>
-         <div className="absolute top-20 left-10 w-72 h-72 bg-purple-600/20 rounded-full blur-[100px]"></div>
-         <div className="absolute bottom-10 right-10 w-96 h-96 bg-brand-600/10 rounded-full blur-[120px]"></div>
-
-         <div className="max-w-7xl mx-auto px-4 relative z-10 w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-             <div className="animate-slide-up text-left">
-                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 text-brand-300 border border-white/10 text-xs font-bold mb-6 backdrop-blur-md">
-                     <ShieldCheck size={12} className="fill-current"/> TRUSTED & SAFE
-                 </div>
-                 <h1 className="text-6xl font-extrabold text-white mb-6 leading-tight">
-                     Selamat Datang di <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-sky-300">Tamaonlyone Store</span>
-                 </h1>
-                 <p className="text-gray-400 text-lg mb-6 max-w-lg leading-relaxed">
-                     Pusat Top Up Game, Voucher, dan Produk Digital Terpercaya. Proses cepat, aman, dan harga bersahabat.
-                 </p>
-                 <button onClick={() => navigate('/shop')} className="px-8 py-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-2xl shadow-xl shadow-brand-500/20 transition-all active:scale-95 text-base">
-                     Mulai Belanja
-                 </button>
-             </div>
-             
-             {/* Right Visual for Web */}
-             <div className="flex justify-end relative">
-                 <div className="grid grid-cols-2 gap-6 transform rotate-[-6deg]">
-                     <div className="w-36 h-36 bg-gradient-to-br from-[#2e1065] to-[#581c87] rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center justify-center text-white">
-                          <Gamepad2 size={32} className="text-purple-300 mb-2"/>
-                          <span className="font-bold text-sm">Game Item</span>
-                     </div>
-                     <div className="w-36 h-36 bg-gradient-to-br from-[#0f172a] to-[#1e293b] rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center justify-center text-white mt-8">
-                          <Ticket size={32} className="text-blue-300 mb-2"/>
-                          <span className="font-bold text-sm">Vouchers</span>
-                     </div>
-                 </div>
-             </div>
-         </div>
-      </section>
-
-      {/* =================================================================================
-          2. MOBILE APP VIEW - Wallet Card & Quick Menu (Super-App Style)
-          Ini HANYA muncul di HP. Menggantikan Banner Besar.
-         ================================================================================= */}
-      <section className="md:hidden px-4 pt-4 pb-2 animate-fade-in">
-          {/* A. Wallet / Info Card */}
-          <div className="bg-gradient-to-r from-brand-700 to-blue-800 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden mb-6">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-              
-              <div className="flex justify-between items-start relative z-10">
-                  <div>
-                      <p className="text-brand-100 text-xs mb-1">Total Saldo Poin</p>
-                      <h3 className="text-2xl font-black">{user ? user.points.toLocaleString() : '0'} <span className="text-xs font-normal opacity-70">pts</span></h3>
+      {/* RESTORED HERO SECTION */}
+      <div className="bg-[#0f172a] relative overflow-hidden py-16 md:py-24">
+          <div className="max-w-7xl mx-auto px-6 relative z-10">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+                  <div className="max-w-2xl animate-slide-up">
+                      <h1 className="text-5xl md:text-6xl font-black text-white leading-tight mb-6">
+                          Selamat Datang <br/>
+                          di <span className="text-brand-500">Tamaonlyone Store</span>
+                      </h1>
+                      <p className="text-gray-400 text-lg md:text-xl leading-relaxed max-w-lg mb-8">
+                          Pusat Top Up Game, Voucher, dan Produk Digital Terpercaya. Proses cepat, aman, dan harga bersahabat.
+                      </p>
+                      
+                      <div className="flex gap-4">
+                          <button onClick={() => navigate('/shop')} className="px-8 py-3 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/30 transition-all transform hover:-translate-y-1">
+                              Belanja Sekarang
+                          </button>
+                          {!user && (
+                              <button onClick={() => navigate('/register')} className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/10 transition-all">
+                                  Daftar Akun
+                              </button>
+                          )}
+                      </div>
                   </div>
-                  <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm cursor-pointer hover:bg-white/30 transition-colors" onClick={() => navigate('/profile')}>
-                      <Wallet size={20} className="text-white"/>
+
+                  {/* Hero Cards Visual */}
+                  <div className="hidden md:flex relative gap-6 pr-10 animate-fade-in">
+                      <div className="w-48 h-64 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl shadow-2xl transform -rotate-6 hover:rotate-0 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4">
+                          <Gamepad2 size={48} className="text-white mb-4"/>
+                          <span className="font-black text-white text-lg">Game Item</span>
+                          <p className="text-purple-200 text-xs text-center mt-2">Mobile Legends, PUBG, FF, Genshin</p>
+                      </div>
+                      <div className="w-48 h-64 bg-[#1e293b] rounded-3xl shadow-2xl transform rotate-6 translate-y-8 hover:rotate-0 hover:translate-y-4 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4">
+                          <Ticket size={48} className="text-brand-400 mb-4"/>
+                          <span className="font-black text-white text-lg">Vouchers</span>
+                          <p className="text-gray-400 text-xs text-center mt-2">Diskon & Promo Harian Spesial</p>
+                      </div>
                   </div>
               </div>
+          </div>
+          
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+      </div>
 
-              {/* Action Buttons inside Card */}
-              <div className="mt-4 flex gap-3">
-                  <button onClick={() => navigate('/shop')} className="flex-1 bg-white text-brand-700 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-transform">
-                      <Plus size={14}/> Top Up
-                  </button>
-                  <button onClick={() => navigate('/shop')} className="flex-1 bg-brand-800/50 text-white py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border border-white/10 active:scale-95 transition-transform">
-                      Riwayat
-                  </button>
+      {/* News Ticker (Moved Below Hero) */}
+      <NewsTicker />
+
+      <div className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
+          
+          {/* WALLET / POINTS CARD */}
+          <div className="bg-[#1e293b] rounded-3xl p-6 border border-white/5 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-brand-600/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+              <div className="relative z-10">
+                  <p className="text-gray-400 text-sm mb-1">Total Saldo Poin</p>
+                  <div className="flex items-end gap-1 mb-6">
+                      <h2 className="text-4xl font-black text-white">{user ? user.points.toLocaleString() : '0'}</h2>
+                      <span className="text-gray-500 font-bold mb-1">pts</span>
+                  </div>
+                  <div className="flex gap-4">
+                      <div className="flex-1 bg-white h-12 rounded-xl flex items-center px-4">
+                          <div className="w-full h-2 bg-gray-200 rounded-full animate-pulse"></div>
+                      </div>
+                      <button onClick={() => navigate(user ? '/profile' : '/login')} className="px-6 h-12 border border-white/10 rounded-xl text-white font-bold hover:bg-white/5 transition-colors flex items-center gap-2">
+                          <History size={18}/> Riwayat
+                      </button>
+                  </div>
               </div>
           </div>
 
-          {/* B. Quick Menu Grid (App Icons) */}
-          <div className="grid grid-cols-4 gap-y-4 gap-x-2 mb-2">
-              {quickMenus.map((menu, idx) => (
-                  <div key={idx} onClick={() => navigate('/shop')} className="flex flex-col items-center gap-2 cursor-pointer group">
-                      <div className={`${menu.color} p-3 rounded-[18px] shadow-lg text-white group-active:scale-90 transition-transform`}>
-                          <menu.icon size={20} />
+          {/* GRID MENU LOCKED */}
+          <div className="grid grid-cols-4 gap-y-6 gap-x-4">
+              {menuItems.map((item, idx) => (
+                  <div key={idx} onClick={() => !item.locked && navigate('/shop')} className={`flex flex-col items-center gap-2 relative group ${item.locked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}>
+                      <div className={`w-14 h-14 ${item.bg} rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-105 transition-transform shadow-lg relative overflow-hidden`}>
+                          <item.icon size={24} className={item.color} />
+                          {item.locked && (
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                  <Lock size={16} className="text-white/80"/>
+                              </div>
+                          )}
                       </div>
-                      <span className="text-[10px] text-gray-300 font-medium text-center leading-tight">{menu.label}</span>
+                      <span className="text-[11px] text-gray-300 text-center font-medium leading-tight">{item.name}</span>
+                      {item.locked && (
+                          <span className="absolute -top-1 -right-1 bg-red-600 text-[8px] text-white px-1.5 py-0.5 rounded-md font-bold shadow-sm whitespace-nowrap z-10 scale-90">
+                              Segera Hadir
+                          </span>
+                      )}
                   </div>
               ))}
           </div>
-      </section>
 
-      {/* 3. CATEGORY PILLS (Sticky) - Optimized for both */}
-      <div className="sticky top-[60px] md:top-16 z-30 bg-[#0f172a]/95 backdrop-blur-md border-b border-white/5 py-3 md:py-4">
-          <div className="max-w-7xl mx-auto px-4">
-              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 snap-x">
-                  {['Semua', 'Game Items', 'Voucher', 'Premium Apps', 'Jasa Joki', 'Pulsa & Data', 'E-Wallet', 'Lainnya'].map((cat, idx) => (
-                      <button key={idx} onClick={() => navigate('/shop')} className="snap-start flex-shrink-0 px-4 py-1.5 md:py-2 rounded-full bg-[#1e293b] border border-white/10 text-gray-300 text-xs md:text-sm font-bold hover:bg-brand-600 hover:text-white hover:border-brand-500 transition-all whitespace-nowrap active:bg-brand-600 active:text-white">
-                          {cat}
-                      </button>
-                  ))}
-              </div>
+          {/* FILTER PILLS */}
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pt-2">
+              {['Semua', 'Game Items', 'Voucher', 'Premium Apps'].map((cat, idx) => (
+                  <button key={idx} onClick={() => navigate('/shop')} className="flex-shrink-0 px-5 py-2 rounded-full bg-[#1e293b] border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/5 transition-all whitespace-nowrap">
+                      {cat}
+                  </button>
+              ))}
           </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-4 md:py-12 space-y-8 md:space-y-12">
-          {/* FEATURE: FLASH SALE */}
-          <div className="animate-fade-in">
+          {/* FLASH SALE */}
+          <div className="animate-fade-in pt-4">
               <FlashSale />
           </div>
 
-          {/* PRODUCT LIST */}
+          {/* RECOMMENDATION LIST */}
           <section>
-              <div className="flex items-center justify-between mb-4 md:mb-6">
-                  <h2 className="text-lg md:text-2xl font-bold text-white flex items-center gap-2">
-                      <div className="w-1 h-5 md:h-6 bg-brand-500 rounded-full"></div> Rekomendasi
+              <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      Rekomendasi
                   </h2>
-                  <button onClick={() => navigate('/shop')} className="text-brand-400 font-bold text-xs md:text-sm flex items-center gap-1">
+                  <button onClick={() => navigate('/shop')} className="text-brand-400 font-bold text-xs flex items-center gap-1">
                       Lihat Semua <ChevronRight size={14}/>
                   </button>
               </div>
               
               {loading ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
-                      {[...Array(5)].map((_,i) => <ProductSkeleton key={i} />)}
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      {[...Array(4)].map((_,i) => <ProductSkeleton key={i} />)}
                   </div>
               ) : products.length === 0 ? (
-                  <div className="bg-[#1e293b] p-8 md:p-12 rounded-2xl text-center text-gray-500 border border-white/5 border-dashed flex flex-col items-center gap-4">
+                  <div className="bg-[#1e293b] p-8 rounded-2xl text-center text-gray-500 border border-white/5 border-dashed flex flex-col items-center gap-4">
                       <Package size={32} className="opacity-20"/>
-                      <p className="text-sm">Belum ada produk Official.</p>
+                      <p className="text-sm">Belum ada produk.</p>
                   </div>
               ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                       {latestProducts.map(p => (
                           <ProductCard key={p.id} product={p} canBuy={true} onBuy={() => navigate(`/shop?product=${p.id}`)} />
                       ))}
                   </div>
               )}
-          </section>
-
-          {/* CTA BANNER (Footer Banner) */}
-          <section className="relative rounded-2xl md:rounded-3xl overflow-hidden bg-gradient-to-r from-brand-900 to-purple-900 text-center py-8 md:py-16 px-4 border border-white/10">
-               <div className="relative z-10 flex flex-col items-center">
-                   <h2 className="text-xl md:text-3xl font-bold text-white mb-2 md:mb-4">Butuh Bantuan?</h2>
-                   <p className="text-gray-200 max-w-xl mx-auto mb-6 text-sm md:text-lg">CS kami siap membantu 24/7 jika ada kendala transaksi.</p>
-                   <button onClick={() => navigate('/help')} className="px-6 py-2.5 bg-white text-brand-900 font-bold rounded-xl text-sm md:text-base hover:bg-gray-100 transition-colors shadow-lg">Hubungi CS</button>
-               </div>
           </section>
       </div>
     </div>

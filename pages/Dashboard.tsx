@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { Product, User, UserRole, Order, ActivityLog, OrderStatus, VipLevel, Coupon, ProductType, SiteProfile, StoreStatus, Report } from '../types';
-import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, AlertTriangle, Copy, Zap, ArrowUpCircle, Edit2 } from 'lucide-react';
+import { Product, User, UserRole, Order, ActivityLog, OrderStatus, VipLevel, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive } from '../types';
+import { Plus, Trash2, Save, User as UserIcon, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, AlertTriangle, Copy, Zap, ArrowUpCircle, Edit2, Database, Server, HardDrive, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -16,6 +16,16 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: s
             <h4 className="text-3xl font-extrabold text-white mb-1">{value}</h4>
             <p className="text-gray-400 text-sm font-medium tracking-wide uppercase">{title}</p>
         </div>
+    </div>
+);
+
+const DbStatRow = ({ label, count, icon: Icon }: { label: string, count: number, icon: any }) => (
+    <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><Icon size={18}/></div>
+            <span className="text-gray-300 font-medium text-sm">{label}</span>
+        </div>
+        <span className="text-white font-bold font-mono">{count.toLocaleString()} Docs</span>
     </div>
 );
 
@@ -34,6 +44,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [archives, setArchives] = useState<Archive[]>([]);
   const [siteProfile, setSiteProfile] = useState<SiteProfile | null>(null);
 
   // Form States
@@ -65,6 +76,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
     }
     
     refreshData();
+    runCleanupJob(); // Run cleanup check on mount
     
     const unsubscribeOrders = StorageService.subscribeToOrders((updatedOrders) => {
         setOrders(updatedOrders);
@@ -85,13 +97,14 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchStaticData = async () => {
     try {
-        const [p, allUsers, l, c, rep, prof] = await Promise.all([
+        const [p, allUsers, l, c, rep, prof, arch] = await Promise.all([
             StorageService.getProducts(),
             StorageService.getUsers(),
             StorageService.getLogs(),
             StorageService.getCoupons(),
             StorageService.getReports(),
-            StorageService.getProfile()
+            StorageService.getProfile(),
+            StorageService.getArchives()
         ]);
         
         setAllProducts(p); // ALL products
@@ -104,6 +117,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
         setCoupons(c);
         setReports(rep);
         setSiteProfile(prof);
+        setArchives(arch);
         setStats(prev => ({ ...prev, totalMembers: onlyMembers.length }));
     } catch (err) {
         addToast("Gagal memuat beberapa data dashboard.", "error");
@@ -114,6 +128,14 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       setLoading(true);
       await fetchStaticData();
       setLoading(false);
+  };
+
+  const runCleanupJob = async () => {
+      const result = await StorageService.runWeeklyCleanup();
+      if (result.cleanedLogs > 0 || result.cleanedOrders > 0) {
+          addToast(`Auto-Cleanup: Archived ${result.cleanedLogs} logs & ${result.cleanedOrders} orders.`, "success");
+          refreshData();
+      }
   };
 
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -279,10 +301,26 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       addToast("Laporan dihapus", "info");
   };
 
+  const handleDownloadArchive = (content: string, date: string) => {
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup_tama_${new Date(date).toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+  };
+
   const copyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text);
       addToast("UID disalin!", "info");
   };
+
+  // Calculate Storage Stats (Estimasi 2KB per doc + Asset overhead approximation)
+  const totalDocs = members.length + sellers.length + allProducts.length + orders.length + logs.length + coupons.length + reports.length + archives.length;
+  const estimatedSizeKB = totalDocs * 2; // Rough estimate
+  const totalQuotaKB = 1024 * 1024; // 1 GB in KB (Firebase Spark Plan limit approx)
+  const usagePercent = Math.min(100, (estimatedSizeKB / totalQuotaKB) * 100);
 
   return (
     <div className="max-w-[1600px] mx-auto px-4 py-8 sm:px-6 lg:px-8 min-h-screen">
@@ -339,10 +377,84 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                       <StatCard title="Member" value={stats.totalMembers.toString()} icon={Users} color="blue" />
                       <StatCard title="Total Order" value={stats.totalOrders.toString()} icon={CheckCircle} color="purple" />
                   </div>
+
+                  {/* REALTIME DATABASE STATS & USAGE */}
+                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none"></div>
+                      <div className="flex items-center gap-3 mb-6">
+                          <Database className="text-blue-500" size={24}/>
+                          <h3 className="text-xl font-bold text-white">Database Storage Statistics</h3>
+                          <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded animate-pulse">Live</span>
+                      </div>
+                      
+                      {/* Storage Progress Bar */}
+                      <div className="mb-8 p-4 bg-black/20 rounded-2xl border border-white/5">
+                          <div className="flex justify-between items-end mb-2">
+                              <div>
+                                  <p className="text-sm font-bold text-gray-300 flex items-center gap-2"><HardDrive size={16}/> Total Penyimpanan Database</p>
+                                  <p className="text-xs text-gray-500">Estimasi penggunaan berdasarkan jumlah dokumen.</p>
+                              </div>
+                              <div className="text-right">
+                                  <span className="text-brand-400 font-black text-xl">{usagePercent.toFixed(2)}%</span>
+                                  <span className="text-gray-500 text-xs block">Terpakai dari 1 GB (Free Tier)</span>
+                              </div>
+                          </div>
+                          <div className="w-full h-4 bg-gray-700 rounded-full overflow-hidden">
+                              <div 
+                                  className={`h-full transition-all duration-1000 ${usagePercent > 80 ? 'bg-red-500' : 'bg-brand-500'}`} 
+                                  style={{ width: `${usagePercent}%` }}
+                              ></div>
+                          </div>
+                          <p className="text-[10px] text-right mt-1 text-gray-500">{estimatedSizeKB.toLocaleString()} KB / {totalQuotaKB.toLocaleString()} KB</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           <DbStatRow label="Users & Admin" count={members.length + 1} icon={Users}/>
+                           <DbStatRow label="Active Sellers" count={sellers.length} icon={Store}/>
+                           <DbStatRow label="Total Products" count={allProducts.length} icon={Package}/>
+                           <DbStatRow label="Transaction Records" count={orders.length} icon={ShoppingCart}/>
+                           <DbStatRow label="Activity Logs" count={logs.length} icon={FileText}/>
+                           <DbStatRow label="Active Coupons" count={coupons.length} icon={Ticket}/>
+                           <DbStatRow label="Reports" count={reports.length} icon={Flag}/>
+                      </div>
+                      
+                      <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center gap-2"><Server size={14}/> Cloud Firestore (NoSQL)</div>
+                          <div>Total Documents: {totalDocs.toLocaleString()}</div>
+                      </div>
+                  </div>
+
+                  {/* AUTO-CLEANUP HISTORY ARCHIVES */}
+                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
+                      <div className="flex justify-between items-center mb-6">
+                          <div>
+                              <h3 className="text-xl font-bold text-white flex items-center gap-2"><FileText size={20}/> Arsip History Otomatis</h3>
+                              <p className="text-xs text-gray-400 mt-1">Data log & order lama (7+ hari) otomatis dihapus dan direkap disini untuk menghemat database.</p>
+                          </div>
+                      </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {archives.length === 0 ? (
+                              <p className="text-gray-500 text-sm text-center py-4">Belum ada arsip cleanup.</p>
+                          ) : (
+                              archives.map(arch => (
+                                  <div key={arch.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                                      <div>
+                                          <p className="text-white font-bold text-sm">Cleanup Recap - {new Date(arch.date).toLocaleDateString()}</p>
+                                          <p className="text-[10px] text-gray-400">{arch.dataCount} items archived ({arch.sizeKB} KB)</p>
+                                      </div>
+                                      <button onClick={() => handleDownloadArchive(arch.content, arch.date)} className="p-2 bg-brand-600/20 text-brand-400 hover:bg-brand-600 hover:text-white rounded-lg transition-colors">
+                                          <Download size={16}/>
+                                      </button>
+                                  </div>
+                              ))
+                          )}
+                      </div>
+                  </div>
               </div>
           )}
 
-          {/* TAB: PRODUCTS */}
+          {/* ... [Other tabs (Products, Orders, Members, etc.) remain unchanged] ... */}
+          
           {activeTab === 'products' && (
               <div className="animate-fade-in space-y-8">
                   {/* ... Existing Product Form ... */}
@@ -389,7 +501,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: ORDERS */}
           {activeTab === 'orders' && (
               <div className="animate-fade-in space-y-6">
                   <div className="flex items-center gap-4 bg-dark-card p-4 rounded-2xl border border-white/5">
@@ -443,7 +554,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: MEMBERS */}
           {activeTab === 'members' && (
               <div className="animate-fade-in space-y-6">
                   <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
@@ -474,7 +584,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                               </div>
                                           </td>
                                           <td className="p-4">
-                                              {/* SHOW FIREBASE UID */}
                                               <div className="flex items-center gap-2">
                                                   <code className="text-[10px] bg-black/30 p-1 rounded text-gray-300 font-mono truncate max-w-[100px]" title={m.id}>{m.id}</code>
                                                   <button onClick={() => copyToClipboard(m.id)} className="text-gray-500 hover:text-white p-1 rounded"><Copy size={12}/></button>
@@ -505,10 +614,8 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: COUPONS & PROMO */}
           {activeTab === 'coupons' && (
               <div className="animate-fade-in space-y-8">
-                  {/* POINTS MANAGER */}
                   <div className="bg-dark-card border border-white/5 rounded-3xl p-8 mb-8">
                       <h3 className="text-white font-bold mb-6 flex items-center gap-2"><Coins className="text-yellow-500"/> Kelola Poin Member</h3>
                       <div className="flex flex-col md:flex-row gap-4 items-end">
@@ -549,7 +656,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: REPORTS */}
           {activeTab === 'reports' && (
               <div className="animate-fade-in space-y-4">
                   <h3 className="text-white font-bold text-xl mb-4">Laporan Masuk ({reports.length})</h3>
@@ -576,7 +682,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: STORES - Updated with Product Management */}
           {activeTab === 'stores' && (
               <div className="animate-fade-in space-y-6">
                   {manualExpId && (
@@ -715,7 +820,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
           
-          {/* TAB: SETTINGS WITH MAINTENANCE TOGGLE */}
           {activeTab === 'settings' && siteProfile && (
             <div className="animate-fade-in space-y-8">
                 <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
