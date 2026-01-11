@@ -1,32 +1,62 @@
 
 import React from 'react';
-import { Home, Gamepad2, ShoppingCart, User as UserIcon } from 'lucide-react';
+import { Home, Gamepad2, ShoppingCart, User as UserIcon, Store } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { StorageService } from '../services/storageService';
 
 const BottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const user = StorageService.getSession();
 
   const isActive = (path: string) => location.pathname === path;
 
+  // Custom Tab Item Component
+  const TabItem = ({ path, icon: Icon, label }: { path: string, icon: any, label: string }) => {
+      const active = isActive(path);
+      return (
+        <button 
+            onClick={() => navigate(path)} 
+            className={`flex flex-col items-center justify-center gap-1 w-full h-full relative group transition-all duration-300 ${active ? 'text-brand-400' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+           <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? 'bg-brand-500/10 -translate-y-1' : ''}`}>
+               <Icon size={22} strokeWidth={active ? 2.5 : 2} fill={active ? "currentColor" : "none"} className={`transition-transform ${active ? 'scale-110' : 'group-active:scale-95'}`} />
+           </div>
+           <span className={`text-[10px] font-bold transition-all ${active ? 'text-brand-400' : 'text-gray-500'}`}>{label}</span>
+           
+           {/* Active Indicator Dot */}
+           {active && <div className="absolute top-1 right-1/2 translate-x-3 w-1.5 h-1.5 bg-brand-500 rounded-full shadow-[0_0_8px_rgba(14,165,233,0.8)]"></div>}
+        </button>
+      );
+  };
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#1e293b]/95 backdrop-blur-md border-t border-white/10 md:hidden flex justify-around items-center h-16 safe-area-bottom">
-       <button onClick={() => navigate('/')} className={`flex flex-col items-center gap-1 ${isActive('/') ? 'text-brand-400' : 'text-gray-500'}`}>
-           <Home size={22} fill={isActive('/') ? 'currentColor' : 'none'} />
-           <span className="text-[10px] font-bold">Home</span>
-       </button>
-       <button onClick={() => navigate('/shop')} className={`flex flex-col items-center gap-1 ${isActive('/shop') ? 'text-brand-400' : 'text-gray-500'}`}>
-           <Gamepad2 size={22} fill={isActive('/shop') ? 'currentColor' : 'none'} />
-           <span className="text-[10px] font-bold">Shop</span>
-       </button>
-       <button onClick={() => navigate('/cart')} className={`flex flex-col items-center gap-1 ${isActive('/cart') ? 'text-brand-400' : 'text-gray-500'}`}>
-           <ShoppingCart size={22} fill={isActive('/cart') ? 'currentColor' : 'none'} />
-           <span className="text-[10px] font-bold">Cart</span>
-       </button>
-       <button onClick={() => navigate('/profile')} className={`flex flex-col items-center gap-1 ${isActive('/profile') ? 'text-brand-400' : 'text-gray-500'}`}>
-           <UserIcon size={22} fill={isActive('/profile') ? 'currentColor' : 'none'} />
-           <span className="text-[10px] font-bold">Account</span>
-       </button>
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+        {/* Floating gradient border effect */}
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-500/50 to-transparent"></div>
+        
+        <div className="bg-[#0f172a]/95 backdrop-blur-xl h-[72px] pb-safe flex justify-between items-center px-2 shadow-[0_-5px_20px_rgba(0,0,0,0.3)]">
+           <TabItem path="/" icon={Home} label="Home" />
+           <TabItem path="/shop" icon={Gamepad2} label="Produk" />
+           
+           {/* Center Floating Button (Cart or Pay) */}
+           <div className="relative -top-5">
+               <button 
+                onClick={() => navigate('/cart')}
+                className="w-14 h-14 bg-gradient-to-tr from-brand-600 to-blue-600 rounded-full flex items-center justify-center text-white shadow-[0_0_15px_rgba(14,165,233,0.5)] border-4 border-[#0f172a] transform active:scale-95 transition-transform"
+               >
+                   <ShoppingCart size={24} fill="white" />
+               </button>
+           </div>
+
+           {user?.isSeller ? (
+               <TabItem path="/open-store" icon={Store} label="Toko" />
+           ) : (
+               <TabItem path="/community" icon={Store} label="Komunitas" />
+           )}
+           
+           <TabItem path="/profile" icon={UserIcon} label="Akun" />
+        </div>
     </div>
   );
 };

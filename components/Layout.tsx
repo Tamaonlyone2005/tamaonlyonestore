@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Menu, X, User as UserIcon, LogOut, Shield, Headset, Bell, Gamepad2, Home, Search, ShoppingCart, Users, Store, Globe, Download, Smartphone } from 'lucide-react';
+import { Bell, ShoppingCart, LogOut, Shield, Store, Download, Search, Menu, X, Home, Gamepad2, Users } from 'lucide-react';
 import { APP_NAME, COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
@@ -17,13 +17,13 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
   const [siteLogo, setSiteLogo] = useState<string>('');
   const [siteName, setSiteName] = useState<string>('Tamaonlyone Store');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,7 +32,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   useEffect(() => {
     document.documentElement.classList.add('dark');
     
-    // Load Site Config
+    const handleScroll = () => {
+        setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    
     const fetchProfile = async () => {
         const profile = await StorageService.getProfile();
         if (profile.avatar && !profile.avatar.includes('picsum.photos')) {
@@ -40,36 +44,29 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         }
         let currentName = profile.name === 'Tamaonlyone' ? 'Tamaonlyone Store' : (profile.name || 'Tamaonlyone Store');
         setSiteName(currentName);
-        document.title = currentName;
     };
     fetchProfile();
 
-    // PWA Install Prompt Listener
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      console.log("Install prompt captured");
     });
 
-    // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
         setIsAppInstalled(true);
     }
+
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [location.pathname]);
 
-  // REAL-TIME NOTIFICATIONS
   useEffect(() => {
     if (!user) return;
-
-    // Cart Check
     const checkCart = async () => {
         const cart = await StorageService.getCart(user.id);
         setCartCount(cart.length);
     };
     checkCart();
     const cartInterval = setInterval(checkCart, 2000);
-
-    // Order Notifications
     const unsubscribeOrders = StorageService.subscribeToOrders((allOrders) => {
         if (user.role === UserRole.ADMIN) {
             setUnreadCount(allOrders.filter(o => o.status === OrderStatus.PENDING).length);
@@ -77,7 +74,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
             setUnreadCount(allOrders.filter(o => o.userId === user.id && (o.status === OrderStatus.PROCESSED || o.status === OrderStatus.PENDING)).length);
         }
     });
-
     return () => {
         clearInterval(cartInterval);
         unsubscribeOrders();
@@ -90,30 +86,22 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
     navigate('/');
   };
 
-  const handleCsClick = () => {
-     if(!user) navigate('/login'); else navigate('/chat?type=support');
-  };
-
   const handleInstallApp = async () => {
     if (isAppInstalled) {
         addToast("Aplikasi sudah terinstal.", "success");
         return;
     }
-
     if (!deferredPrompt) {
-        // Fallback Instruction for iOS or when prompt is not available
-        addToast("Untuk Instal: Klik Menu Browser (Titik 3 / Share) > 'Tambahkan ke Layar Utama' (Add to Home Screen).", "info");
+        addToast("Klik 'Share' > 'Add to Home Screen' pada browser Anda.", "info");
         return;
     }
-    
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-    }
+    if (outcome === 'accepted') setDeferredPrompt(null);
   };
   
   const isActive = (path: string) => location.pathname === path;
+  const isAdmin = user?.role === UserRole.ADMIN;
 
   const renderLogoText = (name: string) => {
     if (name.includes('Store')) {
@@ -123,224 +111,197 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
     return name;
   };
 
-  const isAdmin = user?.role === UserRole.ADMIN;
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#0f172a] text-white selection:bg-brand-500 selection:text-white font-sans">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-[#1e293b]/90 backdrop-blur-md border-b border-white/5 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Link to="/" className="flex items-center gap-2 group">
+    <div className="min-h-screen flex flex-col bg-[#0f172a] text-white font-sans">
+      
+      {/* ================= DESKTOP NAVIGATION (Hidden on Mobile) ================= */}
+      <nav className={`hidden md:block sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#1e293b]/90 backdrop-blur-md border-b border-white/5 shadow-lg' : 'bg-transparent'}`}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-3 group">
                   {siteLogo ? (
-                      <img src={siteLogo} alt="Logo" className="w-9 h-9 rounded-lg object-cover shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform"/>
+                      <img src={siteLogo} alt="Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform"/>
                   ) : (
-                      <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-purple-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20">
                         {siteName.charAt(0)}
                       </div>
                   )}
-                  <span className="font-extrabold text-xl tracking-tight text-white group-hover:text-gray-200 transition-colors">
+                  <span className="font-extrabold text-2xl tracking-tight text-white">
                     {renderLogoText(siteName)}
                   </span>
-              </Link>
-            </div>
+            </Link>
 
-            {/* Desktop Menu */}
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-1 items-center">
-                <Link to="/" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
+            {/* Desktop Links */}
+            <div className="flex items-center gap-1">
+                <Link to="/" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                   <Home size={18} /> Home
                 </Link>
-                <Link to="/shop" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/shop') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
+                <Link to="/shop" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/shop') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                   <Gamepad2 size={18} /> Produk
                 </Link>
-                
-                {/* Community Link: Only for Members (Non-Admin) */}
                 {user && !isAdmin && (
-                   <Link to="/community" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
+                   <Link to="/community" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                      <Users size={18} /> Komunitas
                    </Link>
                 )}
-                
-                {/* Desktop Install Button - ALWAYS VISIBLE for testing */}
+            </div>
+
+            {/* Desktop Actions */}
+            <div className="flex items-center gap-4">
                 {!isAppInstalled && (
-                    <button onClick={handleInstallApp} className="px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 text-green-400 hover:bg-green-500/10 ml-2 border border-green-500/20">
-                         <Download size={18} /> App
+                    <button onClick={handleInstallApp} className="px-4 py-2 rounded-full text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-all flex items-center gap-2">
+                         <Download size={14} /> App
                     </button>
                 )}
-
+                
                 {user ? (
-                  <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/10">
-                    <Link to="/cart" className="relative group cursor-pointer text-gray-300 hover:text-white p-2">
-                        <ShoppingCart size={20} />
-                        {cartCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-600 rounded-full text-[10px] flex items-center justify-center text-white border border-dark-bg">
-                                {cartCount}
-                            </span>
-                        )}
+                  <div className="flex items-center gap-4 pl-6 border-l border-white/10">
+                    <Link to="/cart" className="relative p-2 text-gray-300 hover:text-white transition-colors">
+                        <ShoppingCart size={22} />
+                        {cartCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-brand-600 rounded-full text-[10px] flex items-center justify-center text-white border-2 border-[#0f172a]">{cartCount}</span>}
                     </Link>
 
-                    <div className="relative group cursor-pointer" onClick={() => isAdmin ? navigate('/admin') : navigate('/profile')}>
-                        <Bell size={20} className="text-gray-300 group-hover:text-white" />
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white border border-dark-bg animate-pulse">
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                            </span>
-                        )}
+                    <div className="relative cursor-pointer p-2 text-gray-300 hover:text-white transition-colors" onClick={() => navigate(isAdmin ? '/admin' : '/profile')}>
+                        <Bell size={22} />
+                        {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white border-2 border-[#0f172a] animate-pulse">{unreadCount}</span>}
                     </div>
-                    
-                    {/* Seller Menu: HANYA jika Member DAN sudah jadi Seller */}
+
                     {user.isSeller && !isAdmin && (
-                         <Link to="/open-store" className="text-brand-400 hover:text-white flex items-center gap-1 font-bold text-sm bg-brand-500/10 px-3 py-1.5 rounded-lg border border-brand-500/20">
+                         <Link to="/open-store" className="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-brand-500/20 transition-all">
                             <Store size={16} /> Toko Saya
                          </Link>
                     )}
 
-                    {/* Admin Menu: Khusus Admin */}
-                    {isAdmin && (
-                      <Link to="/admin" className="text-gray-300 hover:text-brand-400 flex items-center gap-1 font-bold text-sm">
-                        <Shield size={16} /> Panel Admin
-                      </Link>
-                    )}
-                    
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/profile')}>
-                      <img src={user.avatar || "https://picsum.photos/32/32"} alt="Profile" className="w-9 h-9 rounded-full border-2 border-brand-500/50 object-cover"/>
+                    <div className="flex items-center gap-3 cursor-pointer pl-2" onClick={() => navigate('/profile')}>
+                      <img src={user.avatar || "https://picsum.photos/32/32"} alt="Profile" className="w-10 h-10 rounded-full border-2 border-brand-500/50 object-cover"/>
                       <div className="hidden lg:block leading-tight">
                           <p className="text-sm font-bold text-white">{user.username}</p>
                           <p className="text-[10px] text-brand-400 font-mono">{isAdmin ? 'ADMIN' : `IDR ${user.points.toLocaleString()}`}</p>
                       </div>
                     </div>
-                    <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-400 transition-colors"><LogOut size={20} /></button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 ml-6">
-                     <Link to="/login" className="text-gray-300 hover:text-white font-bold text-sm">Masuk</Link>
-                    <Link to="/register" className="bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white px-5 py-2 rounded-full text-sm font-bold transition-all shadow-lg shadow-brand-500/25">Daftar</Link>
+                  <div className="flex items-center gap-3 pl-4">
+                    <Link to="/login" className="text-white font-bold text-sm px-4">Masuk</Link>
+                    <Link to="/register" className="bg-white text-black hover:bg-gray-200 px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg">Daftar</Link>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="-mr-2 flex md:hidden items-center gap-4">
-                {user && (
-                    <Link to="/cart" className="relative p-2 text-gray-300">
-                        <ShoppingCart size={24} />
-                        {cartCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-600 rounded-full text-[10px] flex items-center justify-center text-white border border-dark-bg">{cartCount}</span>
-                        )}
-                    </Link>
-                )}
-               <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700">
-                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
             </div>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-[#1e293b] border-b border-white/10 animate-slide-up">
-            <div className="px-4 pt-2 pb-4 space-y-2">
-              <Link to="/" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Home</Link>
-              <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Produk</Link>
-              
-              {user && !isAdmin && (
-                   <Link to="/community" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Komunitas</Link>
-              )}
-              
-              {/* Mobile Seller Link: Member Only */}
-              {user?.isSeller && !isAdmin && (
-                  <Link to="/open-store" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Toko Saya</Link>
-              )}
-              
-              {isAdmin && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-brand-400 hover:bg-white/5">Panel Admin</Link>}
-
-              {/* Install App Button Mobile - ALWAYS VISIBLE */}
-              {!isAppInstalled && (
-                  <button onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-green-400 bg-green-500/10 hover:bg-green-500/20 flex items-center gap-2 border border-green-500/20">
-                      <Download size={18} /> Install Aplikasi
-                  </button>
-              )}
-              
-              {user ? (
-                <>
-                  <div className="border-t border-white/10 my-2 pt-2">
-                      <div className="flex items-center gap-3 px-3 py-2">
-                          <img src={user.avatar} className="w-8 h-8 rounded-full"/>
-                          <div>
-                              <div className="text-white font-bold">{user.username}</div>
-                              <div className="text-brand-400 text-xs">IDR {user.points.toLocaleString()}</div>
-                          </div>
-                      </div>
-                  </div>
-                  <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-bold text-white hover:bg-white/5">Akun Saya</Link>
-                  <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-bold text-red-400 hover:bg-white/5">Keluar</button>
-                </>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 mt-4">
-                  <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-white/5 text-white">Masuk</Link>
-                  <Link to="/register" onClick={() => setIsMenuOpen(false)} className="block text-center px-3 py-2 rounded-lg text-sm font-bold bg-brand-600 text-white">Daftar</Link>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </nav>
 
-      {/* Content */}
-      <main className="flex-grow w-full max-w-[100vw] overflow-x-hidden pb-16 md:pb-0">
+      {/* ================= MOBILE HEADER (App-Like) ================= */}
+      <div className={`md:hidden sticky top-0 z-40 transition-all duration-300 ${scrolled ? 'bg-[#1e293b]/95 backdrop-blur-md border-b border-white/5 shadow-lg' : 'bg-[#0f172a] pt-2'}`}>
+          <div className="px-4 py-3 flex items-center justify-between">
+              {/* Left: Brand / Greeting */}
+              <div className="flex items-center gap-3">
+                  {user ? (
+                      <Link to="/profile" className="flex items-center gap-3">
+                          <img src={user.avatar || "https://picsum.photos/40"} className="w-9 h-9 rounded-full border border-white/10 object-cover"/>
+                          <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-400">Selamat datang,</span>
+                              <span className="text-sm font-bold text-white leading-none max-w-[120px] truncate">{user.username}</span>
+                          </div>
+                      </Link>
+                  ) : (
+                      <div className="flex items-center gap-2">
+                           {siteLogo ? (
+                              <img src={siteLogo} className="w-8 h-8 rounded-lg object-cover"/>
+                          ) : (
+                              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white">{siteName.charAt(0)}</div>
+                          )}
+                          <span className="font-extrabold text-lg text-white tracking-tight">{renderLogoText(siteName)}</span>
+                      </div>
+                  )}
+              </div>
+
+              {/* Right: Actions */}
+              <div className="flex items-center gap-3">
+                  {/* Search Icon Mobile */}
+                  <button onClick={() => navigate('/shop')} className="p-2 bg-white/5 rounded-full text-gray-300 hover:text-white">
+                      <Search size={20}/>
+                  </button>
+
+                  {user ? (
+                      <>
+                          <Link to="/cart" className="p-2 bg-white/5 rounded-full text-gray-300 hover:text-white relative">
+                              <ShoppingCart size={20}/>
+                              {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-brand-600 rounded-full text-[9px] flex items-center justify-center text-white border-2 border-[#0f172a]">{cartCount}</span>}
+                          </Link>
+                          {isAdmin && (
+                              <Link to="/admin" className="p-2 bg-brand-600/20 text-brand-400 rounded-full">
+                                  <Shield size={20}/>
+                              </Link>
+                          )}
+                      </>
+                  ) : (
+                      <Link to="/login" className="bg-brand-600 text-white px-4 py-1.5 rounded-full text-xs font-bold">
+                          Masuk
+                      </Link>
+                  )}
+              </div>
+          </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-grow w-full max-w-[100vw] overflow-x-hidden pb-24 md:pb-0">
         {children}
       </main>
 
-      <footer className="bg-[#0b1120] border-t border-white/5 py-10 mt-12 w-full mb-16 md:mb-0">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-          <div>
-              <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
-                  {siteLogo ? (
-                      <img src={siteLogo} alt="Logo" className="w-8 h-8 rounded-lg object-cover"/>
-                  ) : (
-                      <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white">{siteName.charAt(0)}</div>
-                  )}
+      {/* ================= DESKTOP FOOTER (Hidden on Mobile) ================= */}
+      <footer className="hidden md:block bg-[#0b1120] border-t border-white/5 py-12 mt-12 w-full">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
+          <div className="col-span-1 md:col-span-1">
+              <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white">{siteName.charAt(0)}</div>
                   <span className="font-bold text-xl text-white">{renderLogoText(siteName)}</span>
               </div>
-              <p className="text-gray-500 text-sm">The most trusted digital store for your daily needs. Fast, secure, and reliable.</p>
-              
-              {/* Footer Install Button - Always Visible */}
+              <p className="text-gray-500 text-sm leading-relaxed mb-6">Platform top up game dan produk digital terpercaya dengan proses otomatis 24 jam.</p>
               {!isAppInstalled && (
-                  <button onClick={handleInstallApp} className="mt-4 px-4 py-2 bg-white/5 hover:bg-white/10 text-green-400 rounded-lg text-xs font-bold flex items-center gap-2 border border-white/10 mx-auto md:mx-0">
-                      <Smartphone size={14}/> Download Aplikasi
+                  <button onClick={handleInstallApp} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/10 transition-colors">
+                      <Download size={16}/> Download Aplikasi PC
                   </button>
               )}
           </div>
+          
           <div>
-              <h4 className="font-bold text-white mb-4">Metode Pembayaran</h4>
-              <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                  <span className="px-3 py-1 bg-white/5 rounded text-xs text-gray-400">QRIS</span>
-                  <span className="px-3 py-1 bg-white/5 rounded text-xs text-gray-400">BCA</span>
-                  <span className="px-3 py-1 bg-white/5 rounded text-xs text-gray-400">E-Wallet</span>
+              <h4 className="font-bold text-white mb-6">Navigasi</h4>
+              <ul className="space-y-3 text-sm text-gray-400">
+                  <li><Link to="/" className="hover:text-brand-400 transition-colors">Home</Link></li>
+                  <li><Link to="/shop" className="hover:text-brand-400 transition-colors">Semua Produk</Link></li>
+                  <li><Link to="/community" className="hover:text-brand-400 transition-colors">Komunitas Gamer</Link></li>
+                  <li><Link to="/help" className="hover:text-brand-400 transition-colors">Bantuan (FAQ)</Link></li>
+              </ul>
+          </div>
+
+          <div>
+              <h4 className="font-bold text-white mb-6">Legal & Support</h4>
+              <ul className="space-y-3 text-sm text-gray-400">
+                  <li><span className="hover:text-brand-400 cursor-pointer">Syarat & Ketentuan</span></li>
+                  <li><span className="hover:text-brand-400 cursor-pointer">Kebijakan Privasi</span></li>
+                  <li><span className="hover:text-brand-400 cursor-pointer">Hubungi Kami</span></li>
+              </ul>
+          </div>
+
+          <div>
+              <h4 className="font-bold text-white mb-6">Pembayaran</h4>
+              <div className="flex flex-wrap gap-2">
+                  {['QRIS', 'BCA', 'Mandiri', 'BNI', 'BRI', 'Dana', 'OVO', 'ShopeePay', 'LinkAja'].map(p => (
+                      <span key={p} className="px-3 py-1 bg-white/5 rounded-lg text-xs text-gray-400 border border-white/5">{p}</span>
+                  ))}
               </div>
           </div>
-          <div>
-              <h4 className="font-bold text-white mb-4">Bantuan</h4>
-              <p className="text-gray-500 text-sm mb-2">Jam Operasional: 09:00 - 22:00 WIB</p>
-              <button onClick={handleCsClick} className="text-brand-400 text-sm font-bold hover:underline">Hubungi Kami</button>
-          </div>
         </div>
-        <div className="text-center mt-10 pt-6 border-t border-white/5">
-            <p className="text-gray-600 text-xs">{COPYRIGHT}</p>
+        <div className="text-center mt-12 pt-8 border-t border-white/5">
+            <p className="text-gray-600 text-xs">{COPYRIGHT} • Made with ❤️ by Tamaonlyone</p>
         </div>
       </footer>
 
-      {/* CS Button */}
-      <button onClick={handleCsClick} className="fixed bottom-20 md:bottom-6 right-6 z-50 p-4 bg-green-600 hover:bg-green-500 text-white rounded-full shadow-lg hover:scale-110 transition-all border-4 border-[#0f172a]">
-        <Headset size={26} />
-      </button>
-
-      {/* Tombol Back to Top baru */}
       <BackToTop />
-
+      
+      {/* Mobile Bottom Navigation - Visible ONLY on Mobile */}
       <BottomNav />
     </div>
   );
