@@ -22,7 +22,7 @@ export const DEFAULT_PROFILE = {
     instagram: "https://instagram.com",
     discord: "https://discord.com",
     whatsapp: "https://wa.me/6281234567890", // Ganti dengan nomor WA Bisnis Asli
-    email: "support@tamaonlyonestore.my.id" // Disiapkan untuk domain .my.id (Rp 10.000/thn)
+    email: "support@tamaonlyonestore.my.id" // Pastikan email ini aktif atau gunakan admin@...
   },
   isLocked: false,
   vipThresholds: {

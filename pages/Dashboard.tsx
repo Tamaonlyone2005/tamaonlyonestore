@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive } from '../types';
-import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle } from 'lucide-react';
+import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive, Feedback } from '../types';
+import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -32,7 +32,7 @@ const DbStatRow = ({ label, count, icon: Icon }: { label: string, count: number,
 const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'members' | 'stores' | 'coupons' | 'logs' | 'reports' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'members' | 'stores' | 'coupons' | 'logs' | 'reports' | 'feedback' | 'settings'>('overview');
   const [loading, setLoading] = useState(false);
   
   // Data States
@@ -44,6 +44,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [archives, setArchives] = useState<Archive[]>([]);
   const [siteProfile, setSiteProfile] = useState<SiteProfile | null>(null);
 
@@ -97,12 +98,13 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchStaticData = async () => {
     try {
-        const [p, allUsers, l, c, rep, prof, arch] = await Promise.all([
+        const [p, allUsers, l, c, rep, feed, prof, arch] = await Promise.all([
             StorageService.getProducts(),
             StorageService.getUsers(),
             StorageService.getLogs(),
             StorageService.getCoupons(),
             StorageService.getReports(),
+            StorageService.getFeedbacks(),
             StorageService.getProfile(),
             StorageService.getArchives()
         ]);
@@ -116,10 +118,12 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
         setLogs(l);
         setCoupons(c);
         setReports(rep);
+        setFeedbacks(feed);
         setSiteProfile(prof);
         setArchives(arch);
         setStats(prev => ({ ...prev, totalMembers: onlyMembers.length }));
     } catch (err) {
+        console.error(err);
         addToast("Gagal memuat beberapa data dashboard.", "error");
     }
   };
@@ -273,9 +277,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const handleAddCoupon = async () => {
       if(!newCoupon.code || !newCoupon.discountAmount) return addToast("Lengkapi data kupon", "error");
       
-      const productIds = newCoupon.validProductIds ? newCoupon.validProductIds : []; // String check handled in input logic if needed, but keeping it simple as ID string for now if single, or parse if array. Assuming input is comma separated or simple ID.
-      // For now, basic input.
-
       const coupon: Coupon = {
           id: Date.now().toString(),
           code: newCoupon.code.toUpperCase(),
@@ -308,6 +309,14 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       addToast("Laporan dihapus", "info");
   };
 
+  const handleDeleteFeedback = async (id: string) => {
+      if(confirm("Hapus feedback ini?")) {
+          await StorageService.deleteFeedback(id);
+          setFeedbacks(prev => prev.filter(f => f.id !== id));
+          addToast("Feedback dihapus", "info");
+      }
+  };
+
   const handleDownloadArchive = (content: string, date: string) => {
       const blob = new Blob([content], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -324,7 +333,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   // Calculate Storage Stats
-  const totalDocs = members.length + sellers.length + allProducts.length + orders.length + logs.length + coupons.length + reports.length + archives.length;
+  const totalDocs = members.length + sellers.length + allProducts.length + orders.length + logs.length + coupons.length + reports.length + archives.length + feedbacks.length;
   const estimatedSizeKB = totalDocs * 2;
   const totalQuotaKB = 1024 * 1024;
   const usagePercent = Math.min(100, (estimatedSizeKB / totalQuotaKB) * 100);
@@ -350,6 +359,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {[
                 { id: 'overview', label: 'Ringkasan', icon: TrendingUp },
+                { id: 'feedback', label: 'Kotak Saran', icon: MessageSquare, badge: feedbacks.length },
                 { id: 'products', label: 'Katalog Produk', icon: Package },
                 { id: 'orders', label: 'Pesanan Masuk', icon: ShoppingCart, badge: stats.pendingOrders },
                 { id: 'members', label: 'Daftar Member', icon: Users },
@@ -430,6 +440,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                            <DbStatRow label="Activity Logs" count={logs.length} icon={FileText}/>
                            <DbStatRow label="Active Coupons" count={coupons.length} icon={Ticket}/>
                            <DbStatRow label="Reports" count={reports.length} icon={Flag}/>
+                           <DbStatRow label="Feedbacks" count={feedbacks.length} icon={MessageSquare}/>
                       </div>
                   </div>
 
@@ -459,6 +470,37 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                           )}
                       </div>
                   </div>
+              </div>
+          )}
+          
+          {/* TAB: FEEDBACK (NEW) */}
+          {activeTab === 'feedback' && (
+              <div className="animate-fade-in space-y-4">
+                  <h3 className="text-white font-bold text-xl mb-4 flex items-center gap-2"><MessageSquare size={24} className="text-brand-400"/> Kotak Saran & Kritik ({feedbacks.length})</h3>
+                  {feedbacks.length === 0 ? (
+                      <div className="text-center p-12 bg-dark-card rounded-2xl border border-white/5 text-gray-500">
+                          <p>Belum ada masukan dari publik.</p>
+                      </div>
+                  ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {feedbacks.map(f => (
+                              <div key={f.id} className="bg-dark-card border border-white/5 p-6 rounded-2xl relative group hover:border-brand-500/30 transition-all">
+                                  <div className="flex justify-between items-start mb-3">
+                                      <div>
+                                          <h4 className="text-white font-bold">{f.name}</h4>
+                                          <p className="text-xs text-gray-500">{new Date(f.createdAt).toLocaleString()}</p>
+                                      </div>
+                                      <button onClick={() => handleDeleteFeedback(f.id)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                                          <Trash2 size={16}/>
+                                      </button>
+                                  </div>
+                                  <div className="bg-white/5 p-4 rounded-xl text-gray-300 text-sm leading-relaxed border border-white/5">
+                                      "{f.message}"
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
               </div>
           )}
 
@@ -842,7 +884,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                               <div>
                                   <div className="flex items-center gap-2 mb-2">
                                       <span className="bg-red-500/20 text-red-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{r.targetType}</span>
-                                      <span className="text-gray-400 text-xs">{new Date(r.createdAt).toLocaleString()}</span>
+                                      <span className="text-gray-400 text-xs">{new Date(r.createdAt).toLocaleString()}</p>
                                   </div>
                                   <p className="text-white font-bold">{r.reason}</p>
                                   <p className="text-gray-400 text-sm mt-1">{r.description}</p>

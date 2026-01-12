@@ -264,7 +264,15 @@ export interface Report {
   createdAt: string;
 }
 
-// Archive Interface for History Recap
+// NEW: Public Feedback Interface
+export interface Feedback {
+  id: string;
+  name: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+}
+
 export interface Archive {
     id: string;
     date: string;

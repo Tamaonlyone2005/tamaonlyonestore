@@ -158,8 +158,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 pl-4">
-                    <Link to="/login" className="text-white font-bold text-sm px-4">Masuk</Link>
-                    <Link to="/register" className="bg-white text-black hover:bg-gray-200 px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg">Daftar</Link>
+                    <Link to="/login" className="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg shadow-brand-500/20">Masuk</Link>
+                    {/* Registration Removed */}
                   </div>
                 )}
             </div>

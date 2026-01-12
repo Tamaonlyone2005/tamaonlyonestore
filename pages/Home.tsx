@@ -1,19 +1,26 @@
 
 import React, { useEffect, useState } from 'react';
 import { StorageService } from '../services/storageService';
-import { Product, User } from '../types';
+import { Product, User, Feedback } from '../types';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import NewsTicker from '../components/NewsTicker';
 import FlashSale from '../components/FlashSale';
-import { ChevronRight, Package, Wallet, History, Gamepad2, Smartphone, Monitor, Ticket, Zap, Globe, Grid, Lock } from 'lucide-react';
+import { ChevronRight, Package, Wallet, History, Gamepad2, Smartphone, Monitor, Ticket, Zap, Globe, Grid, Lock, MessageSquare, Send, Loader2 } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 const Home: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { addToast } = useToast();
+
+  // Feedback Form State
+  const [feedbackName, setFeedbackName] = useState('');
+  const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [sendingFeedback, setSendingFeedback] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -26,6 +33,25 @@ const Home: React.FC = () => {
     };
     init();
   }, []);
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!feedbackName.trim() || !feedbackMsg.trim()) return addToast("Mohon lengkapi formulir.", "error");
+
+      setSendingFeedback(true);
+      const feedback: Feedback = {
+          id: Date.now().toString(),
+          name: feedbackName,
+          message: feedbackMsg,
+          createdAt: new Date().toISOString(),
+          isRead: false
+      };
+      await StorageService.createFeedback(feedback);
+      setSendingFeedback(false);
+      setFeedbackName('');
+      setFeedbackMsg('');
+      addToast("Terima kasih atas saran Anda!", "success");
+  };
 
   const latestProducts = products.slice(0, 8); 
 
@@ -62,8 +88,8 @@ const Home: React.FC = () => {
                               Belanja Sekarang
                           </button>
                           {!user && (
-                              <button onClick={() => navigate('/register')} className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/10 transition-all">
-                                  Daftar Akun
+                              <button onClick={() => navigate('/register')} className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/10 transition-all opacity-50 cursor-not-allowed">
+                                  Daftar Akun (Tutup)
                               </button>
                           )}
                       </div>
@@ -92,6 +118,65 @@ const Home: React.FC = () => {
 
       {/* News Ticker (Moved Below Hero) */}
       <NewsTicker />
+
+      {/* ANNOUNCEMENT & FEEDBACK SECTION */}
+      <div className="max-w-7xl mx-auto px-4 mt-8">
+          <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] rounded-3xl p-8 border border-white/10 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+              
+              <div className="flex flex-col md:flex-row gap-8 items-start relative z-10">
+                  <div className="flex-1">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-bold mb-4">
+                          <MessageSquare size={14}/> PENGUMUMAN PENGEMBANGAN
+                      </div>
+                      <h2 className="text-2xl md:text-3xl font-black text-white mb-4">Mari Bangun Tamaonlyone Store Bersama!</h2>
+                      <div className="prose prose-invert text-gray-300 leading-relaxed text-sm md:text-base space-y-4">
+                          <p>
+                              Halo,<br/>
+                              Ini adalah website store pribadi saya. Saat ini saya sedang merencanakan pengembangan bisnis ke depannya. Melalui website ini, saya ingin mengembangkan berbagai ide bisnis online yang terinspirasi dari pengalaman hidup saya.
+                          </p>
+                          <p>
+                              Namun, tentu tidak semua ide bisa langsung diterapkan, sehingga saya sangat membutuhkan saran dan masukan dari teman-teman untuk pengembangan website ini.
+                          </p>
+                          <p className="font-semibold text-white">
+                              Jika teman-teman berkenan membantu, silakan berikan saran atau kritik melalui formulir yang telah disediakan. Terima kasih atas dukungannya.
+                          </p>
+                      </div>
+                  </div>
+
+                  {/* Feedback Form */}
+                  <div className="w-full md:w-[400px] bg-black/20 p-6 rounded-2xl border border-white/5 backdrop-blur-sm">
+                      <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Send size={18} className="text-brand-400"/> Kirim Masukan</h3>
+                      <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                          <div>
+                              <input 
+                                  placeholder="Nama Kamu (Boleh Samaran)" 
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm focus:border-brand-500 outline-none transition-all placeholder:text-gray-500"
+                                  value={feedbackName}
+                                  onChange={e => setFeedbackName(e.target.value)}
+                              />
+                          </div>
+                          <div>
+                              <textarea 
+                                  placeholder="Tulis ide, saran, atau kritikmu disini..." 
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm focus:border-brand-500 outline-none transition-all placeholder:text-gray-500 h-32 resize-none"
+                                  value={feedbackMsg}
+                                  onChange={e => setFeedbackMsg(e.target.value)}
+                              />
+                          </div>
+                          <button 
+                              type="submit" 
+                              disabled={sendingFeedback}
+                              className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                              {sendingFeedback ? <Loader2 className="animate-spin" size={18}/> : 'Kirim Saran'}
+                          </button>
+                      </form>
+                      <p className="text-[10px] text-gray-500 mt-3 text-center">Data saran bersifat rahasia dan hanya dibaca oleh Admin.</p>
+                  </div>
+              </div>
+          </div>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
           

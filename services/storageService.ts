@@ -1,7 +1,7 @@
 
 import { db, initializationSuccessful } from './firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc, writeBatch } from "firebase/firestore";
-import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive } from '../types';
+import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive, Feedback } from '../types';
 import { DEFAULT_PROFILE, ADMIN_ID } from '../constants';
 
 let isRemoteEnabled = initializationSuccessful && !!db;
@@ -486,6 +486,14 @@ export const StorageService = {
   createReport: async (report: Report) => { await setDocument('reports', report.id, report); },
   getReports: async (): Promise<Report[]> => getCollection<Report>('reports'),
   deleteReport: async (id: string) => { await deleteDocument('reports', id); },
+
+  // FEEDBACK SYSTEM
+  createFeedback: async (feedback: Feedback) => { await setDocument('feedbacks', feedback.id, feedback); },
+  getFeedbacks: async (): Promise<Feedback[]> => {
+      const all = await getCollection<Feedback>('feedbacks');
+      return all.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+  deleteFeedback: async (id: string) => { await deleteDocument('feedbacks', id); },
 
   // AUTOMATED CLEANUP & ARCHIVES
   getArchives: async (): Promise<Archive[]> => getCollection<Archive>('archives'),
