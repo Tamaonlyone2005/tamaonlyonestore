@@ -222,7 +222,8 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                                           {activeProduct.variants.map((v, idx) => (
                                               <div key={idx} onClick={() => setSelectedVariant(v)} className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedVariant === v ? 'bg-brand-600 border-brand-500 text-white shadow-lg transform scale-[1.02]' : 'bg-dark-bg border-white/10 text-gray-300 hover:border-brand-500/50'}`}>
                                                   <div className="font-bold text-sm leading-tight">{v.name}</div>
-                                                  <div className="text-xs mt-1 opacity-80">Rp {v.price.toLocaleString()}</p>
+                                                  {/* ERROR WAS HERE: Changed </p> to </div> */}
+                                                  <div className="text-xs mt-1 opacity-80">Rp {v.price.toLocaleString()}</div>
                                               </div>
                                           ))}
                                       </div>
