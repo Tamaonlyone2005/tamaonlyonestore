@@ -228,8 +228,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
 
       {/* ================= DESKTOP FOOTER (Hidden on Mobile) ================= */}
       <footer className="hidden md:block bg-[#0b1120] border-t border-white/5 py-12 mt-12 w-full">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
-          <div className="col-span-1 md:col-span-1">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
+          {/* Brand Column */}
+          <div className="col-span-1">
               <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white">{siteName.charAt(0)}</div>
                   <span className="font-bold text-xl text-white">{renderLogoText(siteName)}</span>
@@ -237,6 +238,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
               <p className="text-gray-500 text-sm leading-relaxed mb-6">Platform top up game dan produk digital terpercaya dengan proses otomatis 24 jam.</p>
           </div>
           
+          {/* Navigation Column */}
           <div>
               <h4 className="font-bold text-white mb-6">Navigasi</h4>
               <ul className="space-y-3 text-sm text-gray-400">
@@ -247,6 +249,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
               </ul>
           </div>
 
+          {/* Legal Column (Payment info removed) */}
           <div>
               <h4 className="font-bold text-white mb-6">Legal & Support</h4>
               <ul className="space-y-3 text-sm text-gray-400">
@@ -255,18 +258,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                   <li><span className="hover:text-brand-400 cursor-pointer">Hubungi Kami</span></li>
               </ul>
           </div>
-
-          <div>
-              <h4 className="font-bold text-white mb-6">Pembayaran</h4>
-              <div className="flex flex-wrap gap-2">
-                  {['QRIS', 'BCA', 'Mandiri', 'BNI', 'BRI', 'Dana', 'OVO', 'ShopeePay', 'LinkAja'].map(p => (
-                      <span key={p} className="px-3 py-1 bg-white/5 rounded-lg text-xs text-gray-400 border border-white/5">{p}</span>
-                  ))}
-              </div>
-          </div>
         </div>
         <div className="text-center mt-12 pt-8 border-t border-white/5">
-            <p className="text-gray-600 text-xs">{COPYRIGHT} • Made with ❤️ by Tamaonlyone</p>
+            <p className="text-gray-500 text-xs font-mono">{COPYRIGHT}</p>
         </div>
       </footer>
 

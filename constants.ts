@@ -33,4 +33,4 @@ export const DEFAULT_PROFILE = {
 };
 
 export const APP_NAME = "Tamaonlyone Store";
-export const COPYRIGHT = "© 2026 Tamaonlyone Store";
+export const COPYRIGHT = "@2026 Dominic Space Studio | Tamaonlyone All right reserved";
