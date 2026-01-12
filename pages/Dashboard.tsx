@@ -884,7 +884,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                               <div>
                                   <div className="flex items-center gap-2 mb-2">
                                       <span className="bg-red-500/20 text-red-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{r.targetType}</span>
-                                      <span className="text-gray-400 text-xs">{new Date(r.createdAt).toLocaleString()}</p>
+                                      <span className="text-gray-400 text-xs">{new Date(r.createdAt).toLocaleString()}</span>
                                   </div>
                                   <p className="text-white font-bold">{r.reason}</p>
                                   <p className="text-gray-400 text-sm mt-1">{r.description}</p>

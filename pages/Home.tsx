@@ -180,25 +180,27 @@ const Home: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
           
-          {/* WALLET / POINTS CARD */}
-          <div className="bg-[#1e293b] rounded-3xl p-6 border border-white/5 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-brand-600/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-              <div className="relative z-10">
-                  <p className="text-gray-400 text-sm mb-1">Total Saldo Poin</p>
-                  <div className="flex items-end gap-1 mb-6">
-                      <h2 className="text-4xl font-black text-white">{user ? user.points.toLocaleString() : '0'}</h2>
-                      <span className="text-gray-500 font-bold mb-1">pts</span>
-                  </div>
-                  <div className="flex gap-4">
-                      <div className="flex-1 bg-white h-12 rounded-xl flex items-center px-4">
-                          <div className="w-full h-2 bg-gray-200 rounded-full animate-pulse"></div>
+          {/* WALLET / POINTS CARD - Only shown when logged in */}
+          {user && (
+              <div className="bg-[#1e293b] rounded-3xl p-6 border border-white/5 shadow-xl relative overflow-hidden animate-fade-in">
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-brand-600/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                  <div className="relative z-10">
+                      <p className="text-gray-400 text-sm mb-1">Total Saldo Poin</p>
+                      <div className="flex items-end gap-1 mb-6">
+                          <h2 className="text-4xl font-black text-white">{user.points.toLocaleString()}</h2>
+                          <span className="text-gray-500 font-bold mb-1">pts</span>
                       </div>
-                      <button onClick={() => navigate(user ? '/profile' : '/login')} className="px-6 h-12 border border-white/10 rounded-xl text-white font-bold hover:bg-white/5 transition-colors flex items-center gap-2">
-                          <History size={18}/> Riwayat
-                      </button>
+                      <div className="flex gap-4">
+                          <div className="flex-1 bg-white h-12 rounded-xl flex items-center px-4">
+                              <div className="w-full h-2 bg-gray-200 rounded-full animate-pulse"></div>
+                          </div>
+                          <button onClick={() => navigate('/profile')} className="px-6 h-12 border border-white/10 rounded-xl text-white font-bold hover:bg-white/5 transition-colors flex items-center gap-2">
+                              <History size={18}/> Riwayat
+                          </button>
+                      </div>
                   </div>
               </div>
-          </div>
+          )}
 
           {/* GRID MENU LOCKED */}
           <div className="grid grid-cols-4 gap-y-6 gap-x-4">
