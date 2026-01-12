@@ -273,6 +273,9 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const handleAddCoupon = async () => {
       if(!newCoupon.code || !newCoupon.discountAmount) return addToast("Lengkapi data kupon", "error");
       
+      const productIds = newCoupon.validProductIds ? newCoupon.validProductIds : []; // String check handled in input logic if needed, but keeping it simple as ID string for now if single, or parse if array. Assuming input is comma separated or simple ID.
+      // For now, basic input.
+
       const coupon: Coupon = {
           id: Date.now().toString(),
           code: newCoupon.code.toUpperCase(),
