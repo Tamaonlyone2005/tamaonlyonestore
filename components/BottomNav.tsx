@@ -37,9 +37,9 @@ const BottomNav: React.FC = () => {
         
         <div className="bg-[#0f172a]/95 backdrop-blur-xl h-[72px] pb-safe flex justify-between items-center px-2 shadow-[0_-5px_20px_rgba(0,0,0,0.3)]">
            <TabItem path="/" icon={Home} label="Home" />
-           <TabItem path="/shop" icon={Gamepad2} label="Produk" />
+           <TabItem path="/sellers" icon={Store} label="Seller" /> {/* New Seller Tab */}
            
-           {/* Center Floating Button (Cart or Pay) */}
+           {/* Center Floating Button (Cart) */}
            <div className="relative -top-5">
                <button 
                 onClick={() => navigate('/cart')}
@@ -49,11 +49,7 @@ const BottomNav: React.FC = () => {
                </button>
            </div>
 
-           {user?.isSeller ? (
-               <TabItem path="/open-store" icon={Store} label="Toko" />
-           ) : (
-               <TabItem path="/community" icon={Store} label="Komunitas" />
-           )}
+           <TabItem path="/shop" icon={Gamepad2} label="Produk" />
            
            <TabItem path="/profile" icon={UserIcon} label="Akun" />
         </div>

@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Bell, ShoppingCart, LogOut, Shield, Store, Search, Menu, X, Home, Gamepad2, Users } from 'lucide-react';
+import { Bell, ShoppingCart, LogOut, Shield, Store, Search, Menu, X, Home, Gamepad2, Users, ShoppingBag } from 'lucide-react';
 import { APP_NAME, COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
@@ -113,8 +113,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                 <Link to="/" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                   <Home size={18} /> Home
                 </Link>
+                {/* NEW SELLER LINK */}
+                <Link to="/sellers" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/sellers') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
+                  <Store size={18} /> Seller
+                </Link>
                 <Link to="/shop" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/shop') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
-                  <Gamepad2 size={18} /> Produk
+                  <ShoppingBag size={18} /> Produk
                 </Link>
                 {user && !isAdmin && (
                    <Link to="/community" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
@@ -244,6 +248,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
               <ul className="space-y-3 text-sm text-gray-400">
                   <li><Link to="/" className="hover:text-brand-400 transition-colors">Home</Link></li>
                   <li><Link to="/shop" className="hover:text-brand-400 transition-colors">Semua Produk</Link></li>
+                  <li><Link to="/sellers" className="hover:text-brand-400 transition-colors">Daftar Seller</Link></li>
                   <li><Link to="/community" className="hover:text-brand-400 transition-colors">Komunitas Gamer</Link></li>
                   <li><Link to="/help" className="hover:text-brand-400 transition-colors">Bantuan (FAQ)</Link></li>
               </ul>

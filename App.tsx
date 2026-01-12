@@ -6,6 +6,7 @@ import { User, SiteProfile } from './types';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
+import SellerList from './pages/SellerList'; // Import New Page
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -75,6 +76,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/shop" element={<Shop user={user} />} />
+            <Route path="/sellers" element={<SellerList />} /> {/* New Route */}
             <Route path="/cart" element={<Cart />} />
             <Route path="/login" element={user ? <Navigate to="/shop" /> : <Login onLogin={refreshSession} />} />
             <Route path="/register" element={user ? <Navigate to="/shop" /> : <Register onLogin={refreshSession} />} />
