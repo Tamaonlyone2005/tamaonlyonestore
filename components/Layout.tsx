@@ -4,8 +4,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Bell, ShoppingCart, LogOut, Shield, Store, Search, Menu, X, Home, Gamepad2, Users, ShoppingBag } from 'lucide-react';
-import { APP_NAME, COPYRIGHT } from '../constants';
+import { Bell, ShoppingCart, Shield, Store, Search, Home, Gamepad2, Users, ShoppingBag } from 'lucide-react';
+import { COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
 import { useToast } from './Toast';
@@ -69,13 +69,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
     };
   }, [user]);
 
-  const handleLogout = async () => {
-    // FIX: Force reload to Login to clear all states and prevent redirect to Home
-    await AuthService.logout();
-    window.location.href = '/#/login';
-    window.location.reload();
-  };
-  
   const isActive = (path: string) => location.pathname === path;
   const isAdmin = user?.role === UserRole.ADMIN;
 
@@ -90,7 +83,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   return (
     <div className="min-h-screen flex flex-col bg-[#0f172a] text-white font-sans">
       
-      {/* ================= DESKTOP NAVIGATION (Hidden on Mobile) ================= */}
+      {/* ================= DESKTOP NAVIGATION ================= */}
       <nav className={`hidden md:block sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#1e293b]/90 backdrop-blur-md border-b border-white/5 shadow-lg' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex items-center justify-between h-20">
@@ -113,7 +106,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                 <Link to="/" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                   <Home size={18} /> Home
                 </Link>
-                {/* NEW SELLER LINK */}
                 <Link to="/sellers" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/sellers') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                   <Store size={18} /> Seller
                 </Link>
@@ -136,7 +128,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                         {cartCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-brand-600 rounded-full text-[10px] flex items-center justify-center text-white border-2 border-[#0f172a]">{cartCount}</span>}
                     </Link>
 
-                    {/* Notification Logic: Admin = Shield (Dashboard), Member = Bell (Profile) */}
                     <div 
                         className="relative cursor-pointer p-2 text-gray-300 hover:text-white transition-colors" 
                         onClick={() => navigate(isAdmin ? '/admin' : '/profile')}
@@ -163,7 +154,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                 ) : (
                   <div className="flex items-center gap-3 pl-4">
                     <Link to="/login" className="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg shadow-brand-500/20">Masuk</Link>
-                    {/* Registration Removed */}
                   </div>
                 )}
             </div>
@@ -171,10 +161,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         </div>
       </nav>
 
-      {/* ================= MOBILE HEADER (App-Like) ================= */}
+      {/* ================= MOBILE HEADER ================= */}
       <div className={`md:hidden sticky top-0 z-40 transition-all duration-300 ${scrolled ? 'bg-[#1e293b]/95 backdrop-blur-md border-b border-white/5 shadow-lg' : 'bg-[#0f172a] pt-2'}`}>
           <div className="px-4 py-3 flex items-center justify-between">
-              {/* Left: Brand / Greeting */}
               <div className="flex items-center gap-3">
                   {user ? (
                       <Link to="/profile" className="flex items-center gap-3">
@@ -196,9 +185,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                   )}
               </div>
 
-              {/* Right: Actions */}
               <div className="flex items-center gap-3">
-                  {/* Search Icon Mobile */}
                   <button onClick={() => navigate('/shop')} className="p-2 bg-white/5 rounded-full text-gray-300 hover:text-white">
                       <Search size={20}/>
                   </button>
@@ -230,7 +217,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         {children}
       </main>
 
-      {/* ================= DESKTOP FOOTER (Hidden on Mobile) ================= */}
+      {/* ================= DESKTOP FOOTER (Cleaned & Updated) ================= */}
       <footer className="hidden md:block bg-[#0b1120] border-t border-white/5 py-12 mt-12 w-full">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
           {/* Brand Column */}
@@ -244,28 +231,29 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
           
           {/* Navigation Column */}
           <div>
-              <h4 className="font-bold text-white mb-6">Navigasi</h4>
+              <h4 className="font-bold text-white mb-6">Navigasi Utama</h4>
               <ul className="space-y-3 text-sm text-gray-400">
-                  <li><Link to="/" className="hover:text-brand-400 transition-colors">Home</Link></li>
+                  <li><Link to="/" className="hover:text-brand-400 transition-colors">Halaman Depan</Link></li>
                   <li><Link to="/shop" className="hover:text-brand-400 transition-colors">Semua Produk</Link></li>
-                  <li><Link to="/sellers" className="hover:text-brand-400 transition-colors">Daftar Seller</Link></li>
-                  <li><Link to="/community" className="hover:text-brand-400 transition-colors">Komunitas Gamer</Link></li>
-                  <li><Link to="/help" className="hover:text-brand-400 transition-colors">Bantuan (FAQ)</Link></li>
+                  <li><Link to="/sellers" className="hover:text-brand-400 transition-colors">Cari Toko Member</Link></li>
               </ul>
           </div>
 
-          {/* Legal Column (Payment info removed) */}
+          {/* Support Column */}
           <div>
-              <h4 className="font-bold text-white mb-6">Legal & Support</h4>
+              <h4 className="font-bold text-white mb-6">Bantuan & Legal</h4>
               <ul className="space-y-3 text-sm text-gray-400">
+                  <li><Link to="/help" className="hover:text-brand-400 transition-colors">Pusat Bantuan (FAQ)</Link></li>
+                  <li><Link to="/feedback" className="hover:text-brand-400 transition-colors text-brand-400 font-bold">Kirim Masukan / Saran</Link></li>
                   <li><span className="hover:text-brand-400 cursor-pointer">Syarat & Ketentuan</span></li>
                   <li><span className="hover:text-brand-400 cursor-pointer">Kebijakan Privasi</span></li>
-                  <li><span className="hover:text-brand-400 cursor-pointer">Hubungi Kami</span></li>
               </ul>
           </div>
         </div>
         <div className="text-center mt-12 pt-8 border-t border-white/5">
-            <p className="text-gray-500 text-xs font-mono">{COPYRIGHT}</p>
+            <p className="text-gray-500 text-sm font-serif italic tracking-wide">
+               ©2026 Dominic Studio | Tamaonlyone All Rights Reserved
+            </p>
         </div>
       </footer>
 

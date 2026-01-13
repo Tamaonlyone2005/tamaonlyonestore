@@ -1,7 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Lock } from 'lucide-react';
+import { AuthService } from '../services/authService';
+import { User, Mail, Lock, Loader2, ArrowLeft } from 'lucide-react';
+import { useToast } from '../components/Toast';
 
 interface RegisterProps {
   onLogin: () => void;
@@ -9,6 +11,31 @@ interface RegisterProps {
 
 const Register: React.FC<RegisterProps> = ({ onLogin }) => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
+  
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!username || !email || !password) return addToast("Mohon lengkapi data pendaftaran.", "error");
+    
+    setLoading(true);
+    // Default avatar
+    const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+    const res = await AuthService.register(username, email, password, avatar);
+    setLoading(false);
+
+    if (res.success) {
+        addToast("Registrasi berhasil! Selamat datang.", "success");
+        onLogin();
+        navigate('/shop');
+    } else {
+        addToast(res.message, "error");
+    }
+  };
 
   // BACKGROUND PARTICLES
   const Background = () => (
@@ -22,27 +49,71 @@ const Register: React.FC<RegisterProps> = ({ onLogin }) => {
     <div className="flex items-center justify-center min-h-[90vh] px-4 py-12 relative">
       <Background />
       
-      <div className="w-full max-w-md bg-white/5 backdrop-blur-2xl border border-white/10 p-10 rounded-[2.5rem] shadow-2xl animate-fade-in text-center relative overflow-hidden">
+      <div className="w-full max-w-md bg-white/5 backdrop-blur-2xl border border-white/10 p-8 md:p-10 rounded-[2.5rem] shadow-2xl animate-fade-in relative overflow-hidden">
         
-        {/* Decorative alert icon */}
-        <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Lock size={40} className="text-gray-400" />
+        <div className="text-center mb-8">
+            <h1 className="text-3xl font-black text-white mb-2">Buat Akun Baru</h1>
+            <p className="text-gray-400 text-sm">Bergabunglah dengan komunitas kami sekarang.</p>
         </div>
 
-        <h1 className="text-2xl font-black text-white mb-4">Pendaftaran Ditutup</h1>
-        
-        <p className="text-gray-400 font-medium mb-8 leading-relaxed">
-            Mohon maaf, saat ini pendaftaran akun baru sedang ditutup sementara untuk pengembangan sistem. Silakan cek kembali nanti atau hubungi Admin jika ada keperluan mendesak.
-        </p>
-        
-        <div className="space-y-3">
-             <button onClick={() => navigate('/')} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-4 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2">
-                 <ArrowLeft size={20} /> Kembali ke Beranda
-             </button>
-             
-             <button onClick={() => navigate('/login')} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl transition-all border border-white/5">
-                 Login (Sudah Punya Akun)
-             </button>
+        <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Username</label>
+                <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-brand-400 transition-colors" size={20} />
+                    <input 
+                        type="text" 
+                        value={username} 
+                        onChange={(e) => setUsername(e.target.value)} 
+                        className="w-full bg-black/20 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:bg-black/40 transition-all" 
+                        placeholder="Username unik" 
+                        required 
+                    />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Email</label>
+                <div className="relative group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-brand-400 transition-colors" size={20} />
+                    <input 
+                        type="email" 
+                        value={email} 
+                        onChange={(e) => setEmail(e.target.value)} 
+                        className="w-full bg-black/20 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:bg-black/40 transition-all" 
+                        placeholder="name@example.com" 
+                        required 
+                    />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Password</label>
+                <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-brand-400 transition-colors" size={20} />
+                    <input 
+                        type="password" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        className="w-full bg-black/20 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:bg-black/40 transition-all" 
+                        placeholder="Minimal 6 karakter" 
+                        required 
+                    />
+                </div>
+            </div>
+
+            <button type="submit" disabled={loading} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-brand-500/30 flex justify-center transform hover:-translate-y-1 active:scale-95 mt-4">
+                {loading ? <Loader2 className="animate-spin"/> : "Daftar Sekarang"}
+            </button>
+        </form>
+
+        <div className="mt-8 text-center space-y-4">
+            <p className="text-sm text-gray-500">
+                Sudah punya akun? <Link to="/login" className="text-brand-400 hover:text-brand-300 font-bold hover:underline">Login disini</Link>
+            </p>
+            <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-white transition-colors">
+                <ArrowLeft size={14}/> Kembali ke Beranda
+            </Link>
         </div>
 
       </div>

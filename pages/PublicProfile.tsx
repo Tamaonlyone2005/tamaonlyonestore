@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
 import { User, VipLevel, Product } from '../types';
 import UserAvatar from '../components/UserAvatar';
-import { UserPlus, UserCheck, MessageCircle, Crown, BadgeCheck, Shield, ArrowLeft, Store } from 'lucide-react';
+import { MessageCircle, Crown, BadgeCheck, ArrowLeft, Store } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import ProductCard from '../components/ProductCard';
 
@@ -41,36 +41,10 @@ const PublicProfile: React.FC = () => {
         load();
     }, [id]);
 
-    const handleFollow = async () => {
-        if(!currentUser) return navigate('/login');
-        if(!profileUser) return;
-        
-        const success = await StorageService.followUser(currentUser.id, profileUser.id);
-        if(success) {
-            addToast(`Mengikuti ${profileUser.username}`, "success");
-            // Manual update UI
-            setCurrentUser(prev => prev ? {...prev, following: [...(prev.following || []), profileUser.id]} : null);
-            setProfileUser(prev => prev ? {...prev, followers: [...(prev.followers || []), currentUser.id]} : null);
-        }
-    };
-
-    const handleUnfollow = async () => {
-        if(!currentUser) return;
-        if(!profileUser) return;
-
-        const success = await StorageService.unfollowUser(currentUser.id, profileUser.id);
-        if(success) {
-            addToast(`Unfollow ${profileUser.username}`, "info");
-            setCurrentUser(prev => prev ? {...prev, following: prev.following?.filter(x => x !== profileUser.id)} : null);
-            setProfileUser(prev => prev ? {...prev, followers: prev.followers?.filter(x => x !== currentUser.id)} : null);
-        }
-    };
-
     if(loading) return <div className="p-10 text-center text-white">Loading Profile...</div>;
     if(!profileUser) return <div className="p-10 text-center text-red-400">User tidak ditemukan.</div>;
 
     const isMe = currentUser?.id === profileUser.id;
-    const isFollowing = currentUser?.following?.includes(profileUser.id);
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8 mb-20">
@@ -96,23 +70,14 @@ const PublicProfile: React.FC = () => {
                          </div>
                          {!isMe && (
                              <div className="flex gap-2 mb-2">
-                                 {isFollowing ? (
-                                     <button onClick={handleUnfollow} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2">
-                                         <UserCheck size={16}/> Mengikuti
-                                     </button>
-                                 ) : (
-                                     <button onClick={handleFollow} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2">
-                                         <UserPlus size={16}/> Follow
-                                     </button>
-                                 )}
-                                 <button onClick={() => navigate(`/chat?userId=${profileUser.id}`)} className="bg-white/10 hover:bg-white/20 text-brand-400 px-4 py-2 rounded-xl font-bold text-sm">
-                                     <MessageCircle size={18}/>
+                                 <button onClick={() => navigate(`/chat?userId=${profileUser.id}`)} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg">
+                                     <MessageCircle size={18}/> Kirim Pesan
                                  </button>
                              </div>
                          )}
                      </div>
 
-                     <div className="mb-6">
+                     <div className="mb-2">
                          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                              {profileUser.username}
                              {profileUser.isVerified && <BadgeCheck size={20} className="text-green-500"/>}
@@ -121,26 +86,11 @@ const PublicProfile: React.FC = () => {
                              <div className="flex items-center gap-2 mt-1">
                                  <Store size={14} className="text-brand-400"/>
                                  <span className="text-brand-400 font-bold text-sm">{profileUser.storeName}</span>
-                                 <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 rounded text-gray-400">Seller</span>
+                                 <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 rounded text-gray-400">Official Seller</span>
                              </div>
                          )}
                          <p className="text-sm text-gray-500 mt-2">Bergabung sejak {new Date(profileUser.createdAt).toLocaleDateString()}</p>
                          {profileUser.bio && <p className="text-gray-300 mt-2 text-sm">{profileUser.bio}</p>}
-                     </div>
-
-                     <div className="flex gap-8 border-t border-white/5 pt-4">
-                         <div className="text-center">
-                             <span className="block font-bold text-white text-xl">{profileUser.followers?.length || 0}</span>
-                             <span className="text-gray-500 text-xs uppercase">Followers</span>
-                         </div>
-                         <div className="text-center">
-                             <span className="block font-bold text-white text-xl">{profileUser.following?.length || 0}</span>
-                             <span className="text-gray-500 text-xs uppercase">Following</span>
-                         </div>
-                         <div className="text-center">
-                             <span className="block font-bold text-white text-xl">{profileUser.totalOrders || 0}</span>
-                             <span className="text-gray-500 text-xs uppercase">Transactions</span>
-                         </div>
                      </div>
                  </div>
             </div>

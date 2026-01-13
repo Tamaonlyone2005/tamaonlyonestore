@@ -6,7 +6,7 @@ import { User, SiteProfile } from './types';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
-import SellerList from './pages/SellerList'; // Import New Page
+import SellerList from './pages/SellerList'; 
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -17,6 +17,7 @@ import Chat from './pages/Chat';
 import Cart from './pages/Cart';
 import OpenStore from './pages/OpenStore';
 import Help from './pages/Help';
+import FeedbackPage from './pages/FeedbackPage'; // New Page
 import { ToastProvider } from './components/Toast';
 import { AlertTriangle } from 'lucide-react';
 
@@ -28,13 +29,10 @@ const App: React.FC = () => {
     const initSession = async () => {
         let session = StorageService.getSession();
         
-        // ADMIN ROLE FIX: Force fetch latest data from DB to ensure Role is updated
         if (session) {
             try {
-                // Now findUser uses getDoc which is direct and fast
                 const freshUser = await StorageService.findUser(session.id);
                 if (freshUser) {
-                    // Update Local Storage with fresh data
                     StorageService.setSession(freshUser);
                     session = freshUser;
                     console.log("Session Synced. Current Role:", freshUser.role);
@@ -51,12 +49,10 @@ const App: React.FC = () => {
   }, []);
 
   const refreshSession = () => {
-    // Re-read from storage (which should be updated by login/logout)
     const session = StorageService.getSession();
     setUser(session);
   };
 
-  // FEATURE 30: MAINTENANCE MODE
   if (profile?.isLocked && user?.role !== 'ADMIN') {
       return (
           <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 text-center">
@@ -76,7 +72,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/shop" element={<Shop user={user} />} />
-            <Route path="/sellers" element={<SellerList />} /> {/* New Route */}
+            <Route path="/sellers" element={<SellerList />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/login" element={user ? <Navigate to="/shop" /> : <Login onLogin={refreshSession} />} />
             <Route path="/register" element={user ? <Navigate to="/shop" /> : <Register onLogin={refreshSession} />} />
@@ -87,6 +83,7 @@ const App: React.FC = () => {
             <Route path="/chat" element={<Chat />} />
             <Route path="/open-store" element={<OpenStore />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/feedback" element={<FeedbackPage />} /> {/* New Route */}
           </Routes>
         </Layout>
       </Router>
