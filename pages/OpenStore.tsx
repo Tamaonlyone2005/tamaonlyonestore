@@ -103,8 +103,9 @@ const OpenStore: React.FC = () => {
         if (file) {
             setIsUploading(true);
             try {
-                const compressedBase64 = await StorageService.compressImage(file, 300);
-                setNewProduct(prev => ({ ...prev, image: compressedBase64 }));
+                const uploadedUrl = await StorageService.uploadFile(file);
+                setNewProduct(prev => ({ ...prev, image: uploadedUrl }));
+                addToast("Gambar berhasil diupload!", "success");
             } catch (error) {
                 addToast("Gagal upload gambar.", "error");
             } finally {

@@ -74,8 +74,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
       setIsUploadingAvatar(true);
       try {
-          const compressed = await StorageService.compressImage(file, 200);
-          const updatedUser = { ...currentUser, avatar: compressed };
+          const uploadedUrl = await StorageService.uploadFile(file);
+          const updatedUser = { ...currentUser, avatar: uploadedUrl };
           await StorageService.saveUser(updatedUser);
           setCurrentUser(updatedUser);
           addToast("Foto profil diperbarui!", "success");
@@ -92,8 +92,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
       setIsUploadingBanner(true);
       try {
-          const compressed = await StorageService.compressImage(file, 500);
-          const updatedUser = { ...currentUser, banner: compressed };
+          const uploadedUrl = await StorageService.uploadFile(file);
+          const updatedUser = { ...currentUser, banner: uploadedUrl };
           await StorageService.saveUser(updatedUser);
           setCurrentUser(updatedUser);
           addToast("Banner profil diperbarui!", "success");
@@ -118,10 +118,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       const file = e.target.files?.[0];
       if (file) {
           try {
-              const base64 = await StorageService.compressImage(file, 1024);
-              await StorageService.uploadPaymentProof(orderId, base64);
+              addToast("Sedang mengupload...", "info");
+              const uploadedUrl = await StorageService.uploadFile(file);
+              await StorageService.uploadPaymentProof(orderId, uploadedUrl);
               addToast("Bukti pembayaran berhasil diupload!", "success");
-              setMyOrders(prev => prev.map(o => o.id === orderId ? {...o, paymentProof: base64} : o));
+              setMyOrders(prev => prev.map(o => o.id === orderId ? {...o, paymentProof: uploadedUrl} : o));
           } catch(e) {
               addToast("Gagal upload bukti.", "error");
           }

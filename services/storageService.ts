@@ -2,7 +2,7 @@
 import { db, initializationSuccessful } from './firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc, writeBatch } from "firebase/firestore";
 import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive, Feedback, EventConfig, EventPrize, MEMBERSHIP_PLANS, MembershipTier } from '../types';
-import { DEFAULT_PROFILE, ADMIN_ID } from '../constants';
+import { DEFAULT_PROFILE, ADMIN_ID, CLOUDINARY_CONFIG } from '../constants';
 
 let isRemoteEnabled = initializationSuccessful && !!db;
 
@@ -10,7 +10,7 @@ const handleRemoteError = (error: any) => {
     console.error("Firestore Error:", error);
 };
 
-// OPTIMIZATION: Better compression logic
+// OPTIMIZATION: Better compression logic (Fallback if Cloudinary not set)
 export const compressImage = (file: File, maxSizeKB: number = 500): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -58,6 +58,52 @@ export const compressImage = (file: File, maxSizeKB: number = 500): Promise<stri
         };
         reader.onerror = (err) => reject(err);
     });
+};
+
+// CLOUDINARY UPLOAD HANDLER
+const uploadToCloudinary = async (file: File): Promise<string> => {
+    if (!CLOUDINARY_CONFIG.cloudName || !CLOUDINARY_CONFIG.uploadPreset) {
+        throw new Error("Cloudinary config missing");
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
+    
+    // Optional: Add folder organization
+    formData.append('folder', 'tamaonlyone_store');
+
+    try {
+        const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`,
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || "Upload failed");
+        }
+
+        const data = await response.json();
+        // Return secure_url (HTTPS)
+        // Optimization: Auto-format to webp and limit width for performance
+        let url = data.secure_url;
+        
+        // Inject transformations if possible (f_auto, q_auto, w_1000)
+        // Cloudinary URL format: /upload/TRANSFORMATIONS/v1234/id.jpg
+        const splitUrl = url.split('/upload/');
+        if (splitUrl.length === 2) {
+            url = `${splitUrl[0]}/upload/f_auto,q_auto,w_1000/${splitUrl[1]}`;
+        }
+        
+        return url;
+    } catch (error) {
+        console.error("Cloudinary Error:", error);
+        throw error;
+    }
 };
 
 const cleanData = (obj: any): any => {
@@ -120,6 +166,25 @@ export const StorageService = {
   getSession: (): User | null => safeJSONParse<User | null>('tama_session', null),
   setSession: (user: User) => localStorage.setItem('tama_session', JSON.stringify(user)),
   clearSession: () => localStorage.removeItem('tama_session'),
+  
+  // UNIFIED UPLOAD FUNCTION
+  // Tries Cloudinary first, falls back to Base64 compression
+  uploadFile: async (file: File): Promise<string> => {
+      // 1. Try Cloudinary
+      if (CLOUDINARY_CONFIG.cloudName && CLOUDINARY_CONFIG.uploadPreset) {
+          try {
+              console.log("Uploading to Cloudinary...");
+              return await uploadToCloudinary(file);
+          } catch (e) {
+              console.warn("Cloudinary upload failed, falling back to compression.", e);
+          }
+      }
+      
+      // 2. Fallback to Local Compression (Base64)
+      return await compressImage(file, 300);
+  },
+  
+  // Keep legacy for direct calls if needed
   compressImage: compressImage,
 
   getProfile: async (): Promise<SiteProfile> => {

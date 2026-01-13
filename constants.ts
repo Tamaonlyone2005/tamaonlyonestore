@@ -4,6 +4,13 @@ import { VipLevel } from './types';
 export const ADMIN_ID = "1401062606050004";
 export const ADMIN_PASS = "260605";
 
+// CLOUDINARY CONFIGURATION
+export const CLOUDINARY_CONFIG = {
+  cloudName: "rqm96fsd", // Pastikan ini sesuai dengan 'Cloud Name' di Dashboard Cloudinary Anda
+  uploadPreset: "rqm96fsd", // SUDAH DIUPDATE: Sesuai screenshot Anda (Mode: Unsigned)
+  apiKey: "" // Optional (biarkan kosong karena preset mode unsigned)
+};
+
 // UPDATE: Tambahkan detail pembayaran Anda di sini
 export const PAYMENT_CONFIG = {
   qrisImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/QR_code_for_mobile_English_Wikipedia.svg/1200px-QR_code_for_mobile_English_Wikipedia.svg.png", // GANTI dengan link foto QRIS Anda
