@@ -18,7 +18,6 @@ import Cart from './pages/Cart';
 import OpenStore from './pages/OpenStore';
 import Help from './pages/Help';
 import FeedbackPage from './pages/FeedbackPage';
-import Event from './pages/Event'; // New
 import { ToastProvider } from './components/Toast';
 import { AlertTriangle } from 'lucide-react';
 
@@ -85,7 +84,6 @@ const App: React.FC = () => {
             <Route path="/open-store" element={<OpenStore />} />
             <Route path="/help" element={<Help />} />
             <Route path="/feedback" element={<FeedbackPage />} />
-            <Route path="/event" element={<Event />} /> 
           </Routes>
         </Layout>
       </Router>

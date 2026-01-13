@@ -1,7 +1,8 @@
 
+
 import { db, initializationSuccessful } from './firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc, writeBatch } from "firebase/firestore";
-import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive, Feedback, EventConfig, EventPrize, MEMBERSHIP_PLANS, MembershipTier } from '../types';
+import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive, Feedback, MEMBERSHIP_PLANS, MembershipTier, EventConfig } from '../types';
 import { DEFAULT_PROFILE, ADMIN_ID, CLOUDINARY_CONFIG } from '../constants';
 
 let isRemoteEnabled = initializationSuccessful && !!db;
@@ -675,32 +676,6 @@ export const StorageService = {
       return { cleanedLogs: 0, cleanedOrders: 0 };
   },
 
-  // EVENT SYSTEM
-  getEventConfig: async (): Promise<EventConfig | null> => {
-      if (isRemoteEnabled && db) {
-          try {
-              const snap = await getDoc(doc(db, 'config', 'event'));
-              if(snap.exists()) return snap.data() as EventConfig;
-          } catch(e) {}
-      }
-      // Default
-      return { 
-          isActive: true, 
-          spinCost: 100, 
-          prizes: [
-            { id: '1', name: 'Zonk', type: 'ZONK', value: 0, probability: 50, color: '#ef4444' },
-            { id: '2', name: '50 Poin', type: 'POINT', value: 50, probability: 30, color: '#3b82f6' },
-            { id: '3', name: '500 Poin', type: 'POINT', value: 500, probability: 10, color: '#8b5cf6' },
-            { id: '4', name: 'Elite Member (7 Hari)', type: 'SUBSCRIPTION', value: 7, probability: 5, color: '#eab308' },
-            { id: '5', name: 'Jackpot 5000 Poin', type: 'POINT', value: 5000, probability: 5, color: '#22c55e' }
-          ] 
-      };
-  },
-  
-  saveEventConfig: async (config: EventConfig) => {
-      await setDocument('config', 'event', config);
-  },
-
   // SUBSCRIPTION
   buySubscription: async (userId: string, tierName: MembershipTier) => {
       const user = await StorageService.findUser(userId);
@@ -727,5 +702,31 @@ export const StorageService = {
       // But we log the activity
       await StorageService.logActivity(userId, user.username, "SUBSCRIPTION", `Mengaktifkan ${plan.name}.`);
       return true;
+  },
+
+  // EVENT CONFIG
+  getEventConfig: async (): Promise<EventConfig> => {
+      if (isRemoteEnabled && db) {
+          try {
+             const snap = await getDoc(doc(db, 'config', 'event'));
+             if(snap.exists()) return snap.data() as EventConfig;
+          } catch(e) { handleRemoteError(e); }
+      }
+      // Default Mock Config
+      return {
+          isActive: true,
+          spinCost: 100,
+          prizes: [
+              { id: '1', type: 'POINT', name: '20 Poin', value: 20, probability: 40 },
+              { id: '2', type: 'POINT', name: '50 Poin', value: 50, probability: 30 },
+              { id: '3', type: 'ZONK', name: 'Zonk', value: 0, probability: 20 },
+              { id: '4', type: 'POINT', name: '100 Poin', value: 100, probability: 9 },
+              { id: '5', type: 'SUBSCRIPTION', name: 'Elite Member', value: 0, probability: 1 }
+          ]
+      };
+  },
+  
+  saveEventConfig: async (config: EventConfig) => {
+      await setDocument('config', 'event', config);
   }
 };

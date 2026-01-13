@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import NewsTicker from '../components/NewsTicker';
 import FlashSale from '../components/FlashSale';
-import { ChevronRight, Package, Wallet, History, Gamepad2, Smartphone, Monitor, Ticket, Zap, Globe, Grid, Lock } from 'lucide-react';
+import { ChevronRight, Package, Wallet, History, Gamepad2, Smartphone, Monitor, Ticket, Zap, Globe, Grid, Lock, Crown, Gift, Moon, Star } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 
@@ -49,19 +49,24 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] pb-24 md:pb-20">
+    <div className="min-h-screen bg-dark-bg pb-24 md:pb-20">
       
-      {/* HERO SECTION */}
-      <div className="bg-[#0f172a] relative overflow-hidden py-16 md:py-24">
+      {/* HERO SECTION - RAMADAN EDITION */}
+      <div className="bg-dark-bg relative overflow-hidden py-16 md:py-24">
           <div className="max-w-7xl mx-auto px-6 relative z-10">
               <div className="flex flex-col md:flex-row items-center justify-between gap-12">
                   <div className="max-w-2xl animate-slide-up">
-                      <h1 className="text-5xl md:text-6xl font-black text-white leading-tight mb-6">
-                          Selamat Datang <br/>
-                          di <span className="text-brand-500">Tamaonlyone Store</span>
+                      {/* Greeting */}
+                      <div className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20">
+                          <Moon size={14} className="text-gold-400 fill-current"/>
+                          <span className="text-brand-400 text-xs font-bold tracking-wide uppercase">Ramadhan 1447 H</span>
+                      </div>
+                      <h1 className="text-5xl md:text-6xl font-black text-white leading-tight mb-6 drop-shadow-lg">
+                          Marhaban Ya <br/>
+                          <span className="text-brand-500">Ramadhan 2026</span>
                       </h1>
-                      <p className="text-gray-400 text-lg md:text-xl leading-relaxed max-w-lg mb-8">
-                          Pusat Top Up Game, Voucher, dan Produk Digital Terpercaya. Proses cepat, aman, dan harga bersahabat.
+                      <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-lg mb-8 font-light">
+                          Rayakan kemenangan dengan skin favorit & voucher game termurah. Promo berkah menantimu setiap hari.
                       </p>
                       
                       <div className="flex gap-4">
@@ -76,17 +81,25 @@ const Home: React.FC = () => {
                       </div>
                   </div>
 
-                  {/* Hero Cards Visual */}
+                  {/* Hero Cards Visual with Ramadan Touches */}
                   <div className="hidden md:flex relative gap-6 pr-10 animate-fade-in">
-                      <div className="w-48 h-64 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl shadow-2xl transform -rotate-6 hover:rotate-0 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4">
-                          <Gamepad2 size={48} className="text-white mb-4"/>
-                          <span className="font-black text-white text-lg">Game Item</span>
-                          <p className="text-purple-200 text-xs text-center mt-2">Mobile Legends, PUBG, FF, Genshin</p>
+                      {/* Lantern Decoration */}
+                      <div className="absolute -top-10 left-10 text-gold-500 animate-float opacity-80" style={{ animationDelay: '1s' }}>
+                          <div className="w-1 h-20 bg-gold-600 mx-auto"></div>
+                          <div className="w-8 h-10 bg-gold-400 rounded-lg shadow-lg shadow-gold-400/50"></div>
                       </div>
-                      <div className="w-48 h-64 bg-[#1e293b] rounded-3xl shadow-2xl transform rotate-6 translate-y-8 hover:rotate-0 hover:translate-y-4 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4">
-                          <Ticket size={48} className="text-brand-400 mb-4"/>
-                          <span className="font-black text-white text-lg">Vouchers</span>
-                          <p className="text-gray-400 text-xs text-center mt-2">Diskon & Promo Harian Spesial</p>
+
+                      <div className="w-48 h-64 bg-gradient-to-br from-brand-700 to-brand-900 rounded-3xl shadow-2xl transform -rotate-6 hover:rotate-0 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4 relative overflow-hidden">
+                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-10"></div>
+                          <Gamepad2 size={48} className="text-white mb-4 relative z-10"/>
+                          <span className="font-black text-white text-lg relative z-10">Berkah Gaming</span>
+                          <p className="text-brand-200 text-xs text-center mt-2 relative z-10">Mobile Legends, PUBG, FF</p>
+                      </div>
+                      <div className="w-48 h-64 bg-dark-card rounded-3xl shadow-2xl transform rotate-6 translate-y-8 hover:rotate-0 hover:translate-y-4 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4 relative overflow-hidden">
+                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-10"></div>
+                          <Ticket size={48} className="text-gold-400 mb-4 relative z-10"/>
+                          <span className="font-black text-white text-lg relative z-10">THR Voucher</span>
+                          <p className="text-gray-400 text-xs text-center mt-2 relative z-10">Diskon Spesial Sahur</p>
                       </div>
                   </div>
               </div>
@@ -94,7 +107,7 @@ const Home: React.FC = () => {
           
           {/* Decorative Background Elements */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gold-600/10 rounded-full blur-[100px] pointer-events-none"></div>
       </div>
 
       {/* News Ticker */}
@@ -102,23 +115,51 @@ const Home: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
           
-          {/* WALLET / POINTS CARD - Only shown when logged in */}
+          {/* REDESIGNED WALLET / POINTS CARD */}
           {user && (
-              <div className="bg-[#1e293b] rounded-3xl p-6 border border-white/5 shadow-xl relative overflow-hidden animate-fade-in">
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-brand-600/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+              <div className="bg-gradient-to-br from-dark-card to-dark-bg rounded-3xl p-6 border border-white/10 shadow-2xl relative overflow-hidden animate-fade-in group">
+                  {/* Background Accents */}
+                  <div className="absolute top-[-50%] right-[-50%] w-full h-full bg-gradient-to-b from-brand-500/20 to-transparent rounded-full blur-[80px] group-hover:blur-[100px] transition-all duration-700 pointer-events-none"></div>
+                  
                   <div className="relative z-10">
-                      <p className="text-gray-400 text-sm mb-1">Total Saldo Poin</p>
-                      <div className="flex items-end gap-1 mb-6">
-                          <h2 className="text-4xl font-black text-white">{user.points.toLocaleString()}</h2>
-                          <span className="text-gray-500 font-bold mb-1">pts</span>
-                      </div>
-                      <div className="flex gap-4">
-                          <div className="flex-1 bg-white h-12 rounded-xl flex items-center px-4">
-                              <div className="w-full h-2 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="flex justify-between items-start mb-4">
+                          <div>
+                              <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
+                                  <Wallet size={14} className="text-brand-400"/> Saldo Poin Saya
+                              </p>
+                              <div className="flex items-baseline gap-1">
+                                  <h2 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300">
+                                      {user.points.toLocaleString()}
+                                  </h2>
+                                  <span className="text-brand-500 font-bold text-lg">pts</span>
+                              </div>
                           </div>
-                          <button onClick={() => navigate('/profile')} className="px-6 h-12 border border-white/10 rounded-xl text-white font-bold hover:bg-white/5 transition-colors flex items-center gap-2">
-                              <History size={18}/> Riwayat
-                          </button>
+                          
+                          {/* Member Badge */}
+                          <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-md shadow-lg">
+                              <span className={`text-[10px] font-bold flex items-center gap-1.5 ${
+                                  user.vipLevel !== 'NONE' ? 'text-gold-400' : 'text-gray-300'
+                              }`}>
+                                  <Crown size={12} className="fill-current"/> 
+                                  {user.vipLevel !== 'NONE' ? user.vipLevel : 'MEMBER'}
+                              </span>
+                          </div>
+                      </div>
+                      
+                      {/* Action Buttons (Updated - Removed Event Link) */}
+                      <div className="grid grid-cols-2 gap-3 mt-4">
+                           <button 
+                              onClick={() => navigate('/shop?category=Voucher')}
+                              className="flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-500 text-white py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-brand-500/20 active:scale-95 border border-transparent"
+                           >
+                               <Ticket size={18}/> Klaim Voucher
+                           </button>
+                           <button 
+                              onClick={() => navigate('/profile')}
+                              className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white py-3 rounded-xl font-bold text-sm transition-all border border-white/10 active:scale-95"
+                           >
+                               <History size={18}/> Riwayat
+                           </button>
                       </div>
                   </div>
               </div>
@@ -143,7 +184,7 @@ const Home: React.FC = () => {
           {/* FILTER PILLS */}
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pt-2">
               {['Semua', 'Game Items', 'Voucher', 'Premium Apps'].map((cat, idx) => (
-                  <button key={idx} onClick={() => navigate('/shop')} className="flex-shrink-0 px-5 py-2 rounded-full bg-[#1e293b] border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/5 transition-all whitespace-nowrap">
+                  <button key={idx} onClick={() => navigate('/shop')} className="flex-shrink-0 px-5 py-2 rounded-full bg-dark-card border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/5 transition-all whitespace-nowrap">
                       {cat}
                   </button>
               ))}
@@ -158,7 +199,7 @@ const Home: React.FC = () => {
           <section>
               <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                      Rekomendasi
+                      Rekomendasi Sahur
                   </h2>
                   <button onClick={() => navigate('/shop')} className="text-brand-400 font-bold text-xs flex items-center gap-1">
                       Lihat Semua <ChevronRight size={14}/>
@@ -170,7 +211,7 @@ const Home: React.FC = () => {
                       {[...Array(4)].map((_,i) => <ProductSkeleton key={i} />)}
                   </div>
               ) : products.length === 0 ? (
-                  <div className="bg-[#1e293b] p-8 rounded-2xl text-center text-gray-500 border border-white/5 border-dashed flex flex-col items-center gap-4">
+                  <div className="bg-dark-card p-8 rounded-2xl text-center text-gray-500 border border-white/5 border-dashed flex flex-col items-center gap-4">
                       <Package size={32} className="opacity-20"/>
                       <p className="text-sm">Belum ada produk.</p>
                   </div>

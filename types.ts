@@ -1,4 +1,5 @@
 
+
 export enum UserRole {
   ADMIN = 'ADMIN',
   MEMBER = 'MEMBER',
@@ -284,22 +285,21 @@ export interface Archive {
     content: string;
 }
 
-// EVENT SYSTEM TYPES
-export type PrizeType = 'POINT' | 'SUBSCRIPTION' | 'ZONK' | 'ITEM';
+// EVENT TYPES
+export type EventPrizeType = 'POINT' | 'ZONK' | 'SUBSCRIPTION';
 
 export interface EventPrize {
-    id: string;
-    name: string;
-    type: PrizeType;
-    value: number; // Amount of points or days of sub
-    probability: number; // Percentage 0-100
-    color: string; // Hex for wheel segment
+  id: string;
+  type: EventPrizeType;
+  name: string;
+  value: number;
+  probability: number;
 }
 
 export interface EventConfig {
-    isActive: boolean;
-    spinCost: number;
-    prizes: EventPrize[];
+  isActive: boolean;
+  spinCost: number;
+  prizes: EventPrize[];
 }
 
 // Config Constants
