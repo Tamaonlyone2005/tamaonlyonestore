@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive, Feedback } from '../types';
-import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare } from 'lucide-react';
+import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive, Feedback, EventConfig, EventPrize } from '../types';
+import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -32,7 +32,7 @@ const DbStatRow = ({ label, count, icon: Icon }: { label: string, count: number,
 const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'members' | 'stores' | 'coupons' | 'logs' | 'reports' | 'feedback' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'members' | 'stores' | 'coupons' | 'logs' | 'reports' | 'feedback' | 'settings' | 'event'>('overview');
   const [loading, setLoading] = useState(false);
   
   // Data States
@@ -47,6 +47,9 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [archives, setArchives] = useState<Archive[]>([]);
   const [siteProfile, setSiteProfile] = useState<SiteProfile | null>(null);
+  
+  // Event State
+  const [eventConfig, setEventConfig] = useState<EventConfig | null>(null);
 
   // Form States
   const [newProduct, setNewProduct] = useState<Partial<Product>>({ type: 'ITEM' });
@@ -98,7 +101,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchStaticData = async () => {
     try {
-        const [p, allUsers, l, c, rep, feed, prof, arch] = await Promise.all([
+        const [p, allUsers, l, c, rep, feed, prof, arch, ev] = await Promise.all([
             StorageService.getProducts(),
             StorageService.getUsers(),
             StorageService.getLogs(),
@@ -106,7 +109,8 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             StorageService.getReports(),
             StorageService.getFeedbacks(),
             StorageService.getProfile(),
-            StorageService.getArchives()
+            StorageService.getArchives(),
+            StorageService.getEventConfig()
         ]);
         
         setAllProducts(p); 
@@ -121,6 +125,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
         setFeedbacks(feed);
         setSiteProfile(prof);
         setArchives(arch);
+        setEventConfig(ev);
         setStats(prev => ({ ...prev, totalMembers: onlyMembers.length }));
     } catch (err) {
         console.error(err);
@@ -327,6 +332,25 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       URL.revokeObjectURL(url);
   };
 
+  const handleSaveEvent = async () => {
+      if(eventConfig) {
+          // Validate percentage
+          const totalProb = eventConfig.prizes.reduce((a,b) => a + Number(b.probability), 0);
+          if (totalProb !== 100) {
+              return addToast(`Total probabilitas harus 100%. Saat ini: ${totalProb}%`, "error");
+          }
+          await StorageService.saveEventConfig(eventConfig);
+          addToast("Konfigurasi Event Disimpan!", "success");
+      }
+  };
+
+  const handleUpdatePrize = (idx: number, field: keyof EventPrize, value: any) => {
+      if(!eventConfig) return;
+      const newPrizes = [...eventConfig.prizes];
+      newPrizes[idx] = { ...newPrizes[idx], [field]: value };
+      setEventConfig({ ...eventConfig, prizes: newPrizes });
+  };
+
   const copyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text);
       addToast("UID disalin!", "info");
@@ -359,6 +383,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {[
                 { id: 'overview', label: 'Ringkasan', icon: TrendingUp },
+                { id: 'event', label: 'Event Manager', icon: Gift }, // New Tab
                 { id: 'feedback', label: 'Kotak Saran', icon: MessageSquare, badge: feedbacks.length },
                 { id: 'products', label: 'Katalog Produk', icon: Package },
                 { id: 'orders', label: 'Pesanan Masuk', icon: ShoppingCart, badge: stats.pendingOrders },
@@ -473,6 +498,97 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
           
+          {/* TAB: EVENT MANAGER (NEW) */}
+          {activeTab === 'event' && eventConfig && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                      <div className="flex justify-between items-center mb-6">
+                          <div>
+                            <h3 className="text-xl font-bold text-white">Konfigurasi Roda Keberuntungan</h3>
+                            <p className="text-sm text-gray-400">Total probabilitas hadiah harus 100%.</p>
+                          </div>
+                          <button onClick={handleSaveEvent} className="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                              <Save size={16}/> Simpan Perubahan
+                          </button>
+                      </div>
+
+                      <div className="flex items-center gap-4 mb-6 p-4 bg-white/5 rounded-xl border border-white/5">
+                          <div>
+                              <label className="text-xs text-gray-400 block mb-1">Status Event</label>
+                              <button onClick={() => setEventConfig({...eventConfig, isActive: !eventConfig.isActive})} className={`px-4 py-2 rounded-lg font-bold text-xs ${eventConfig.isActive ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                                  {eventConfig.isActive ? 'AKTIF' : 'NON-AKTIF'}
+                              </button>
+                          </div>
+                          <div>
+                              <label className="text-xs text-gray-400 block mb-1">Biaya Spin (Poin)</label>
+                              <input 
+                                  type="number" 
+                                  value={eventConfig.spinCost}
+                                  onChange={e => setEventConfig({...eventConfig, spinCost: Number(e.target.value)})}
+                                  className="bg-dark-bg border border-white/10 rounded-lg p-2 text-white w-32"
+                              />
+                          </div>
+                      </div>
+
+                      <h4 className="text-white font-bold mb-3">Daftar Hadiah</h4>
+                      <div className="space-y-3">
+                          {eventConfig.prizes.map((prize, idx) => (
+                              <div key={prize.id} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-center bg-dark-bg/50 p-3 rounded-xl border border-white/5">
+                                  <div className="md:col-span-1">
+                                      <label className="text-[10px] text-gray-500 block">Nama Hadiah</label>
+                                      <input 
+                                          value={prize.name} 
+                                          onChange={e => handleUpdatePrize(idx, 'name', e.target.value)}
+                                          className="w-full bg-transparent border-b border-white/10 text-white text-sm"
+                                      />
+                                  </div>
+                                  <div>
+                                      <label className="text-[10px] text-gray-500 block">Tipe</label>
+                                      <select 
+                                          value={prize.type}
+                                          onChange={e => handleUpdatePrize(idx, 'type', e.target.value)}
+                                          className="w-full bg-dark-card border border-white/10 text-white text-xs rounded p-1"
+                                      >
+                                          <option value="POINT">Poin</option>
+                                          <option value="SUBSCRIPTION">Langganan (Hari)</option>
+                                          <option value="ZONK">Zonk</option>
+                                      </select>
+                                  </div>
+                                  <div>
+                                      <label className="text-[10px] text-gray-500 block">Nilai (Poin/Hari)</label>
+                                      <input 
+                                          type="number"
+                                          value={prize.value} 
+                                          onChange={e => handleUpdatePrize(idx, 'value', Number(e.target.value))}
+                                          className="w-full bg-transparent border-b border-white/10 text-white text-sm"
+                                      />
+                                  </div>
+                                  <div>
+                                      <label className="text-[10px] text-gray-500 block">Probabilitas (%)</label>
+                                      <input 
+                                          type="number"
+                                          value={prize.probability} 
+                                          onChange={e => handleUpdatePrize(idx, 'probability', Number(e.target.value))}
+                                          className="w-full bg-transparent border-b border-white/10 text-white text-sm"
+                                      />
+                                  </div>
+                                  <div>
+                                      <label className="text-[10px] text-gray-500 block">Warna (Hex)</label>
+                                      <input 
+                                          type="color"
+                                          value={prize.color} 
+                                          onChange={e => handleUpdatePrize(idx, 'color', e.target.value)}
+                                          className="w-full h-8 cursor-pointer"
+                                      />
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* ... OTHER TABS (Feedback, Products, Orders, etc. kept same as before) ... */}
           {/* TAB: FEEDBACK (NEW) */}
           {activeTab === 'feedback' && (
               <div className="animate-fade-in space-y-4">

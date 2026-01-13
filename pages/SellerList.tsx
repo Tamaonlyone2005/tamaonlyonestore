@@ -4,7 +4,7 @@ import { StorageService } from '../services/storageService';
 import { User, StoreStatus } from '../types';
 import { useNavigate } from 'react-router-dom';
 import UserAvatar from '../components/UserAvatar';
-import { Store, Search, MapPin, Zap, ArrowRight, Star, Check } from 'lucide-react';
+import { Store, Search, Zap, ArrowRight, Star, Check } from 'lucide-react';
 
 const SellerList: React.FC = () => {
     const navigate = useNavigate();
@@ -99,7 +99,7 @@ const SellerList: React.FC = () => {
                                             <h3 className="text-lg font-bold text-white group-hover:text-brand-400 transition-colors flex items-center gap-2">
                                                 {seller.storeName}
                                                 {seller.isVerified && (
-                                                    <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white shadow-md shadow-orange-500/20" title="Official Store">
+                                                    <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white shadow-md shadow-orange-500/20 shrink-0" title="Official Store">
                                                         <Check size={12} strokeWidth={3} />
                                                     </div>
                                                 )}

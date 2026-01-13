@@ -1,7 +1,7 @@
 
 import { db, initializationSuccessful } from './firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc, writeBatch } from "firebase/firestore";
-import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive, Feedback } from '../types';
+import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive, Feedback, EventConfig, EventPrize, MEMBERSHIP_PLANS, MembershipTier } from '../types';
 import { DEFAULT_PROFILE, ADMIN_ID } from '../constants';
 
 let isRemoteEnabled = initializationSuccessful && !!db;
@@ -10,6 +10,7 @@ const handleRemoteError = (error: any) => {
     console.error("Firestore Error:", error);
 };
 
+// OPTIMIZATION: Better compression logic
 export const compressImage = (file: File, maxSizeKB: number = 500): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -21,29 +22,36 @@ export const compressImage = (file: File, maxSizeKB: number = 500): Promise<stri
                 const canvas = document.createElement('canvas');
                 let width = img.width;
                 let height = img.height;
-                const MAX_WIDTH = 1280;
-                const MAX_HEIGHT = 1280;
+                
+                // Smart Resize: Maintain aspect ratio but limit max dimension
+                const MAX_DIMENSION = 1080; 
                 if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
+                    if (width > MAX_DIMENSION) {
+                        height *= MAX_DIMENSION / width;
+                        width = MAX_DIMENSION;
                     }
                 } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
+                    if (height > MAX_DIMENSION) {
+                        width *= MAX_DIMENSION / height;
+                        height = MAX_DIMENSION;
                     }
                 }
+                
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx?.drawImage(img, 0, 0, width, height);
-                let quality = 0.9;
+                
+                // Binary search-like quality reduction
+                let quality = 0.8;
                 let dataUrl = canvas.toDataURL('image/jpeg', quality);
-                while (dataUrl.length / 1024 > maxSizeKB && quality > 0.1) {
+                
+                // Loop to reduce size if still too big
+                while (dataUrl.length / 1024 > maxSizeKB && quality > 0.3) {
                     quality -= 0.1;
                     dataUrl = canvas.toDataURL('image/jpeg', quality);
                 }
+                
                 resolve(dataUrl);
             };
             img.onerror = (err) => reject(err);
@@ -163,9 +171,22 @@ export const StorageService = {
       user.storeStatus = StoreStatus.ACTIVE;
       user.storeLevel = 1; 
       user.storeExp = 0;
+      user.hasAcceptedSellerRules = true; // Auto accept if new
       await StorageService.saveUser(user);
       await StorageService.logActivity(userId, user.username, "OPEN_STORE", `Membuka toko baru: ${storeName}`);
       return true;
+  },
+
+  acceptSellerRules: async (userId: string) => {
+      if (isRemoteEnabled && db) {
+          const userRef = doc(db, 'users', userId);
+          await updateDoc(userRef, { hasAcceptedSellerRules: true });
+          const session = StorageService.getSession();
+          if(session && session.id === userId) {
+              session.hasAcceptedSellerRules = true;
+              StorageService.setSession(session);
+          }
+      }
   },
 
   updateStoreStatus: async (userId: string, status: StoreStatus) => {
@@ -261,13 +282,10 @@ export const StorageService = {
   
   getGlobalProducts: async (): Promise<Product[]> => {
       const all = await StorageService.getProducts();
-      // Ensure strict sorting: Admin products first, then Member products
       const adminProducts = all.filter(p => !p.sellerId);
       const sellerProducts = all.filter(p => p.sellerId);
-      // Sort within groups if needed, e.g., by name or ID
       adminProducts.sort((a, b) => b.id.localeCompare(a.id));
       sellerProducts.sort((a, b) => b.id.localeCompare(a.id));
-      
       return [...adminProducts, ...sellerProducts];
   },
 
@@ -303,20 +321,40 @@ export const StorageService = {
   },
 
   createOrder: async (order: Order) => {
-      await setDocument('orders', order.id, order);
-      await StorageService.logActivity(order.userId, order.username, "BUY", `Membuat pesanan ${order.productName} (#${order.id})`);
-      
-      // Update coupon usage if used
-      if (order.couponCode) {
-          const coupons = await StorageService.getCoupons();
-          const coupon = coupons.find(c => c.code === order.couponCode);
-          if (coupon) {
-              coupon.currentUsage = (coupon.currentUsage || 0) + 1;
-              await StorageService.saveCoupon(coupon);
+      let finalOrder = { ...order };
+
+      if (isRemoteEnabled && db) {
+          try {
+              const productRef = doc(db, 'products', order.productId);
+              const productSnap = await getDoc(productRef);
+              
+              if (productSnap.exists()) {
+                  const productData = productSnap.data() as Product;
+                  finalOrder.originalPrice = productData.price;
+                  
+                  let discountAmount = 0;
+                  if (order.couponCode) {
+                      const coupons = await StorageService.getCoupons();
+                      const coupon = coupons.find(c => c.code === order.couponCode);
+                      if (coupon && coupon.isActive) {
+                           discountAmount = coupon.discountAmount;
+                           coupon.currentUsage = (coupon.currentUsage || 0) + 1;
+                           await StorageService.saveCoupon(coupon);
+                      }
+                  }
+                  
+                  finalOrder.price = Math.max(0, productData.price - discountAmount);
+              }
+          } catch (e) {
+              console.error("Failed to validate product price remotely", e);
           }
       }
+
+      await setDocument('orders', finalOrder.id, finalOrder);
+      await StorageService.logActivity(finalOrder.userId, finalOrder.username, "BUY", `Membuat pesanan ${finalOrder.productName} (#${finalOrder.id})`);
       return true;
   },
+
   uploadPaymentProof: async (orderId: string, proofImage: string) => {
       if (isRemoteEnabled && db) {
           try { 
@@ -325,7 +363,8 @@ export const StorageService = {
           } catch(e) { handleRemoteError(e); }
       }
   },
-  updateOrderStatus: async (orderId: string, status: OrderStatus, adminName: string) => {
+  
+  updateOrderStatus: async (orderId: string, status: OrderStatus, actorName: string) => {
       if (isRemoteEnabled && db) {
           const snap = await getDoc(doc(db, 'orders', orderId));
           const order = snap.exists() ? snap.data() as Order : null;
@@ -351,7 +390,7 @@ export const StorageService = {
               }
           }
       }
-      await StorageService.logActivity(adminName, adminName, "ORDER_UPDATE", `Mengubah status Order #${orderId} menjadi ${status}`);
+      await StorageService.logActivity(actorName, actorName, "ORDER_UPDATE", `Mengubah status Order #${orderId} menjadi ${status}`);
   },
 
   getLogs: async (): Promise<ActivityLog[]> => {
@@ -433,18 +472,44 @@ export const StorageService = {
       const all = await getCollection<PointHistory>('point_history');
       return all.filter(p => p.userId === userId).sort((a,b)=> new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   },
-  managePoints: async (adminName: string, userId: string, amount: number, type: 'ADD' | 'SUBTRACT') => {
+
+  // CENTRALIZED POINT TRANSACTION HELPER
+  addPointTransaction: async (userId: string, amount: number, type: 'ADD' | 'SUBTRACT', reason: string, actorName?: string) => {
       const user = await StorageService.findUser(userId);
-      if(user) {
-          if (type === 'ADD') user.points += amount; else user.points = Math.max(0, user.points - amount);
-          await StorageService.saveUser(user);
-          await StorageService.logActivity(adminName, adminName, "POINTS", `Mengubah poin user ${user.username} (${type === 'ADD' ? '+' : '-'}${amount})`);
-          
-          const history: PointHistory = { id: Date.now().toString(), userId: user.id, type, amount, reason: `${type} oleh ${adminName}`, timestamp: new Date().toISOString() };
-          await setDocument('point_history', history.id, history);
-          return true;
+      if(!user) return false;
+
+      // Update User Balance
+      if (type === 'ADD') {
+          user.points += amount;
+      } else {
+          user.points = Math.max(0, user.points - amount);
       }
-      return false;
+      await StorageService.saveUser(user);
+
+      // Create Point History Log (For User)
+      const history: PointHistory = { 
+          id: Date.now().toString() + Math.random(), 
+          userId: user.id, 
+          type, 
+          amount, 
+          reason, 
+          timestamp: new Date().toISOString() 
+      };
+      await setDocument('point_history', history.id, history);
+
+      // Create Activity Log (For Admin/Audit)
+      await StorageService.logActivity(
+          actorName || user.username, 
+          actorName || user.username, 
+          "POINTS", 
+          `${type === 'ADD' ? 'Menerima' : 'Menggunakan'} ${amount} Poin: ${reason}`
+      );
+
+      return true;
+  },
+
+  managePoints: async (adminName: string, userId: string, amount: number, type: 'ADD' | 'SUBTRACT') => {
+      return await StorageService.addPointTransaction(userId, amount, type, `Adjustment oleh Admin`, adminName);
   },
 
   getCoupons: async (): Promise<Coupon[]> => getCollection<Coupon>('coupons'),
@@ -452,7 +517,6 @@ export const StorageService = {
   deleteCoupon: async (id: string) => { await deleteDocument('coupons', id); },
   
   validateCoupon: async (code: string, productId: string, sellerId?: string): Promise<{valid: boolean, discount: number, message: string}> => {
-      // 1. Coupon only works for ADMIN products (no sellerId)
       if (sellerId) {
           return { valid: false, discount: 0, message: "Kupon hanya berlaku untuk produk Official." };
       }
@@ -463,17 +527,14 @@ export const StorageService = {
       if (!coupon) return { valid: false, discount: 0, message: "Kode kupon tidak ditemukan." };
       if (!coupon.isActive) return { valid: false, discount: 0, message: "Kupon tidak aktif." };
       
-      // 2. Check Expiry
       if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
           return { valid: false, discount: 0, message: "Kupon sudah kadaluarsa." };
       }
 
-      // 3. Check Max Usage
       if (coupon.maxUsage && (coupon.currentUsage || 0) >= coupon.maxUsage) {
           return { valid: false, discount: 0, message: "Kuota kupon habis." };
       }
 
-      // 4. Check Product Restriction
       if (coupon.validProductIds && coupon.validProductIds.length > 0 && !coupon.validProductIds.includes(productId)) {
           return { valid: false, discount: 0, message: "Kupon tidak berlaku untuk produk ini." };
       }
@@ -487,7 +548,6 @@ export const StorageService = {
   getReports: async (): Promise<Report[]> => getCollection<Report>('reports'),
   deleteReport: async (id: string) => { await deleteDocument('reports', id); },
 
-  // FEEDBACK SYSTEM
   createFeedback: async (feedback: Feedback) => { await setDocument('feedbacks', feedback.id, feedback); },
   getFeedbacks: async (): Promise<Feedback[]> => {
       const all = await getCollection<Feedback>('feedbacks');
@@ -495,7 +555,6 @@ export const StorageService = {
   },
   deleteFeedback: async (id: string) => { await deleteDocument('feedbacks', id); },
 
-  // AUTOMATED CLEANUP & ARCHIVES
   getArchives: async (): Promise<Archive[]> => getCollection<Archive>('archives'),
   
   runWeeklyCleanup: async (): Promise<{cleanedLogs: number, cleanedOrders: number}> => {
@@ -510,7 +569,6 @@ export const StorageService = {
           let opCount = 0;
           let deletedData: any[] = [];
 
-          // 1. Get Old Logs (Single field query)
           const logSnap = await getDocs(query(collection(db, 'logs'), where('timestamp', '<', cutoffISO)));
           logSnap.forEach(doc => {
               deletedData.push({ type: 'LOG', ...doc.data() });
@@ -518,11 +576,9 @@ export const StorageService = {
               opCount++;
           });
 
-          // 2. Get Old Completed/Cancelled Orders (Optimize: Query by date only, filter status in code to avoid composite index)
           const orderSnap = await getDocs(query(collection(db, 'orders'), where('createdAt', '<', cutoffISO)));
           orderSnap.forEach(doc => {
               const data = doc.data() as Order;
-              // Filter status locally
               if (data.status === OrderStatus.COMPLETED || data.status === OrderStatus.CANCELLED) {
                   deletedData.push({ type: 'ORDER', ...data });
                   batch.delete(doc.ref);
@@ -531,7 +587,6 @@ export const StorageService = {
           });
 
           if (opCount > 0) {
-              // Create Archive
               const archiveId = `arch_${Date.now()}`;
               const archiveContent = JSON.stringify(deletedData);
               const archive: Archive = {
@@ -547,12 +602,65 @@ export const StorageService = {
               batch.set(archiveRef, archive);
               
               await batch.commit();
-              console.log(`Cleanup complete. Archived ${opCount} items.`);
               return { cleanedLogs: logSnap.size, cleanedOrders: opCount - logSnap.size };
           }
       } catch (e) {
           console.error("Cleanup failed:", e);
       }
       return { cleanedLogs: 0, cleanedOrders: 0 };
+  },
+
+  // EVENT SYSTEM
+  getEventConfig: async (): Promise<EventConfig | null> => {
+      if (isRemoteEnabled && db) {
+          try {
+              const snap = await getDoc(doc(db, 'config', 'event'));
+              if(snap.exists()) return snap.data() as EventConfig;
+          } catch(e) {}
+      }
+      // Default
+      return { 
+          isActive: true, 
+          spinCost: 100, 
+          prizes: [
+            { id: '1', name: 'Zonk', type: 'ZONK', value: 0, probability: 50, color: '#ef4444' },
+            { id: '2', name: '50 Poin', type: 'POINT', value: 50, probability: 30, color: '#3b82f6' },
+            { id: '3', name: '500 Poin', type: 'POINT', value: 500, probability: 10, color: '#8b5cf6' },
+            { id: '4', name: 'Elite Member (7 Hari)', type: 'SUBSCRIPTION', value: 7, probability: 5, color: '#eab308' },
+            { id: '5', name: 'Jackpot 5000 Poin', type: 'POINT', value: 5000, probability: 5, color: '#22c55e' }
+          ] 
+      };
+  },
+  
+  saveEventConfig: async (config: EventConfig) => {
+      await setDocument('config', 'event', config);
+  },
+
+  // SUBSCRIPTION
+  buySubscription: async (userId: string, tierName: MembershipTier) => {
+      const user = await StorageService.findUser(userId);
+      if(!user) return false;
+      
+      const plan = MEMBERSHIP_PLANS.find(p => p.tier === tierName);
+      if(!plan) return false;
+
+      const now = new Date();
+      let endDate = new Date();
+      
+      // If already active same tier, extend. If different tier, overwrite (simplified)
+      if (user.subscriptionEndsAt && new Date(user.subscriptionEndsAt) > now && user.membershipTier === tierName) {
+          endDate = new Date(user.subscriptionEndsAt);
+      }
+      
+      endDate.setDate(endDate.getDate() + plan.duration);
+      user.subscriptionEndsAt = endDate.toISOString();
+      user.membershipTier = tierName;
+      
+      await StorageService.saveUser(user);
+      
+      // We don't record transaction here because that is handled by the "payment" function calling this
+      // But we log the activity
+      await StorageService.logActivity(userId, user.username, "SUBSCRIPTION", `Mengaktifkan ${plan.name}.`);
+      return true;
   }
 };

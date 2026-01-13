@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { User, Product, ProductType, StoreStatus, UserRole, STORE_LEVELS } from '../types';
+import { User, Product, ProductType, StoreStatus, UserRole, STORE_LEVELS, Order, OrderStatus } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Store, Loader2, CheckCircle, Package, ArrowRight, Plus, Upload, Trash2, AlertTriangle, Zap } from 'lucide-react';
+import { Store, Loader2, CheckCircle, Package, ArrowRight, Plus, Upload, Trash2, AlertTriangle, Zap, ShoppingCart, DollarSign, TrendingUp, Clock, FileText } from 'lucide-react';
 import { useToast } from '../components/Toast';
 
 const OpenStore: React.FC = () => {
@@ -11,19 +11,26 @@ const OpenStore: React.FC = () => {
     const { addToast } = useToast();
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'stats'>('products');
     
     // Seller Data State
     const [myProducts, setMyProducts] = useState<Product[]>([]);
+    const [myOrders, setMyOrders] = useState<Order[]>([]);
+    const [stats, setStats] = useState({ revenue: 0, pending: 0, completed: 0 });
     
     // Form State (Register)
     const [storeName, setStoreName] = useState('');
     const [description, setDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [agreedToRules, setAgreedToRules] = useState(false);
 
     // Form State (Add Product)
     const [showAddProduct, setShowAddProduct] = useState(false);
     const [newProduct, setNewProduct] = useState<Partial<Product>>({ type: 'ITEM' });
     const [isUploading, setIsUploading] = useState(false);
+    
+    // Rules Modal State
+    const [showRulesModal, setShowRulesModal] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -40,8 +47,26 @@ const OpenStore: React.FC = () => {
             setUser(freshUser || session);
             
             if (freshUser?.isSeller) {
-                const products = await StorageService.getSellerProducts(freshUser.id);
+                // Check if existing seller has accepted new rules
+                if (!freshUser.hasAcceptedSellerRules) {
+                    setShowRulesModal(true);
+                }
+
+                const [products, orders] = await Promise.all([
+                    StorageService.getSellerProducts(freshUser.id),
+                    StorageService.getOrders()
+                ]);
                 setMyProducts(products);
+                
+                // Filter orders specifically for this seller
+                const sellerOrders = orders.filter(o => o.sellerId === freshUser.id);
+                setMyOrders(sellerOrders);
+                
+                // Calculate Stats
+                const revenue = sellerOrders.filter(o => o.status === OrderStatus.COMPLETED).reduce((acc, o) => acc + o.price, 0);
+                const pending = sellerOrders.filter(o => o.status === OrderStatus.PENDING).length;
+                const completed = sellerOrders.filter(o => o.status === OrderStatus.COMPLETED).length;
+                setStats({ revenue, pending, completed });
             }
             
             setLoading(false);
@@ -53,21 +78,24 @@ const OpenStore: React.FC = () => {
         e.preventDefault();
         if(!user) return;
         if(!storeName.trim()) return addToast("Nama toko wajib diisi", "error");
+        if(!agreedToRules) return addToast("Anda wajib menyetujui Peraturan Seller.", "error");
 
         setIsSubmitting(true);
         const success = await StorageService.registerSeller(user.id, storeName, description);
         if(success) {
             addToast("Selamat! Toko berhasil dibuat.", "success");
-            // Refresh
-            const updatedUser = await StorageService.findUser(user.id);
-            if(updatedUser) {
-                 StorageService.setSession(updatedUser);
-                 setUser(updatedUser);
-            }
+            window.location.reload();
         } else {
             addToast("Gagal membuat toko.", "error");
         }
         setIsSubmitting(false);
+    };
+    
+    const handleAcceptRules = async () => {
+        if(!user) return;
+        await StorageService.acceptSellerRules(user.id);
+        setShowRulesModal(false);
+        addToast("Terima kasih telah menyetujui peraturan.", "success");
     };
     
     const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,31 +156,54 @@ const OpenStore: React.FC = () => {
         }
     };
 
+    const handleProcessOrder = async (orderId: string) => {
+        await StorageService.updateOrderStatus(orderId, OrderStatus.PROCESSED, user?.username || 'Seller');
+        setMyOrders(prev => prev.map(o => o.id === orderId ? {...o, status: OrderStatus.PROCESSED} : o));
+        addToast("Pesanan diproses. Segera kirim item ke pembeli!", "success");
+    };
+
+    // RULES CONTENT
+    const RulesContent = () => (
+        <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-sm text-gray-300 space-y-3 h-64 overflow-y-auto mb-4">
+            <p>1. <strong>Produk Legal:</strong> Seller dilarang menjual produk ilegal, carding, cheat/script berbahaya, atau konten yang melanggar hukum.</p>
+            <p>2. <strong>Kecepatan Proses:</strong> Pesanan wajib diproses maksimal 1x24 jam. Jika tidak, pesanan akan dibatalkan otomatis dan reputasi toko turun.</p>
+            <p>3. <strong>Anti Fraud:</strong> Dilarang melakukan manipulasi order palsu untuk menaikkan rating.</p>
+            <p>4. <strong>Data Pembeli:</strong> Dilarang menyalahgunakan data pembeli untuk kepentingan di luar transaksi.</p>
+            <p>5. <strong>Sanksi:</strong> Pelanggaran aturan dapat menyebabkan penangguhan (suspend) atau pemblokiran permanen akun toko.</p>
+        </div>
+    );
+
     if(loading) return <div className="p-10 text-center text-white"><Loader2 className="animate-spin mx-auto"/> Memuat...</div>;
 
     // IF ALREADY SELLER -> SHOW DASHBOARD
     if (user?.isSeller) {
-        const levelConfig = STORE_LEVELS.find(l => l.level === (user.storeLevel || 1));
-        const maxProds = levelConfig ? levelConfig.maxProducts : 5;
-        const nextLevel = STORE_LEVELS.find(l => l.level === (user.storeLevel || 1) + 1);
-
-        if (user.storeStatus === StoreStatus.SUSPENDED) {
-            return (
-                <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-                    <div className="bg-red-500/10 border border-red-500/20 p-8 rounded-3xl inline-block">
-                        <AlertTriangle size={48} className="text-red-500 mx-auto mb-4"/>
-                        <h1 className="text-2xl font-bold text-white mb-2">Toko Diblokir Admin</h1>
-                        <p className="text-gray-400">Silahkan hubungi support untuk informasi lebih lanjut.</p>
-                    </div>
-                </div>
-            );
-        }
-
         return (
             <div className="max-w-6xl mx-auto px-4 py-8 pb-32">
-                <div className="bg-gradient-to-r from-brand-900 to-blue-900 rounded-3xl p-8 mb-8 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                {/* Rules Modal for Existing Sellers */}
+                {showRulesModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md px-4">
+                        <div className="bg-dark-card w-full max-w-lg rounded-3xl p-8 border border-white/10 shadow-2xl animate-slide-up">
+                            <div className="flex items-center gap-3 mb-4 text-brand-400">
+                                <FileText size={32}/>
+                                <h2 className="text-2xl font-bold text-white">Update Peraturan Seller</h2>
+                            </div>
+                            <p className="text-gray-400 mb-4">Demi menjaga keamanan komunitas, kami telah memperbarui peraturan untuk Seller. Mohon baca dan setujui untuk melanjutkan.</p>
+                            
+                            <RulesContent />
+
+                            <button onClick={handleAcceptRules} className="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-all">
+                                Saya Setuju & Lanjutkan
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Seller Dashboard Content (Same as before) */}
+                {/* Store Header Info */}
+                <div className="bg-gradient-to-r from-brand-900 to-blue-900 rounded-3xl p-8 mb-8 text-white relative overflow-hidden shadow-2xl">
+                     {/* ... (Existing code for header) ... */}
+                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                     <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
                                 <Store size={32} className="text-brand-300"/>
@@ -165,65 +216,157 @@ const OpenStore: React.FC = () => {
                         <div className="bg-white/10 p-4 rounded-2xl border border-white/10 w-full md:w-auto min-w-[200px]">
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-sm font-bold text-yellow-400 flex items-center gap-1"><Zap size={14}/> Level {user.storeLevel || 1}</span>
-                                <span className="text-xs text-gray-300">{user.storeExp || 0} / {nextLevel?.expRequired || 'MAX'} EXP</span>
+                                <span className="text-xs text-gray-300">{user.storeExp || 0} / {STORE_LEVELS.find(l => l.level === (user.storeLevel || 1) + 1)?.expRequired || 'MAX'} EXP</span>
                             </div>
                             <div className="w-full h-2 bg-black/30 rounded-full overflow-hidden">
-                                <div className="h-full bg-yellow-500 transition-all" style={{ width: `${Math.min(100, ((user.storeExp || 0) / (nextLevel?.expRequired || 100)) * 100)}%` }}></div>
+                                <div className="h-full bg-yellow-500 transition-all" style={{ width: `${Math.min(100, ((user.storeExp || 0) / (STORE_LEVELS.find(l => l.level === (user.storeLevel || 1) + 1)?.expRequired || 100)) * 100)}%` }}></div>
                             </div>
-                            <p className="text-[10px] text-gray-400 mt-2 text-center">Slot Produk: {myProducts.length} / {maxProds}</p>
+                            <p className="text-[10px] text-gray-400 mt-2 text-center">Slot Produk: {myProducts.length} / {STORE_LEVELS.find(l => l.level === (user.storeLevel || 1))?.maxProducts}</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Add Product Form Toggle */}
-                <div className="mb-8">
-                     {!showAddProduct ? (
-                         <button onClick={() => setShowAddProduct(true)} className="bg-brand-600 hover:bg-brand-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg">
-                             <Plus size={20}/> Tambah Produk Baru
-                         </button>
-                     ) : (
-                         <div className="bg-dark-card border border-white/5 rounded-3xl p-8 animate-slide-up">
-                             <h3 className="text-xl font-bold text-white mb-6">Input Produk Baru</h3>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <input placeholder="Nama Produk" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.name || ''} onChange={e => setNewProduct({...newProduct, name: e.target.value})}/>
-                                  <input placeholder="Harga (Rp)" type="number" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})}/>
-                                  <select className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value as ProductType})}>
-                                      <option value="ITEM">Item Digital</option>
-                                      <option value="SKIN">Skin / Gift</option>
-                                      <option value="JOKI">Jasa Joki</option>
-                                      <option value="OTHER">Lainnya</option>
-                                  </select>
-                                  
-                                  <div className="relative group">
-                                      <input type="file" onChange={handleProductImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*"/>
-                                      <div className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white flex items-center gap-3">
-                                          <Upload size={18} className="text-gray-400"/>
-                                          <span className="text-sm text-gray-400 truncate">{newProduct.image ? 'Gambar Siap' : 'Upload Gambar'}</span>
-                                      </div>
-                                      {isUploading && <Loader2 className="animate-spin absolute right-2 top-3 text-white"/>}
-                                  </div>
-
-                                  <textarea placeholder="Deskripsi" className="md:col-span-2 bg-dark-bg border border-white/10 rounded-xl p-3 text-white h-24" value={newProduct.description || ''} onChange={e => setNewProduct({...newProduct, description: e.target.value})}/>
-                                  
-                                  <div className="md:col-span-2 flex gap-3">
-                                      <button onClick={() => setShowAddProduct(false)} className="px-6 py-3 rounded-xl border border-white/10 text-white hover:bg-white/5 font-bold">Batal</button>
-                                      <button onClick={handleAddProduct} className="flex-1 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg">Publish Produk</button>
-                                  </div>
-                             </div>
-                         </div>
-                     )}
+                {/* Dashboard Tabs */}
+                <div className="flex bg-[#1e293b] rounded-xl p-1 mb-8 border border-white/5">
+                    {[
+                        { id: 'products', label: 'Produk Saya', icon: Package },
+                        { id: 'orders', label: 'Pesanan Masuk', icon: ShoppingCart, badge: stats.pending },
+                        { id: 'stats', label: 'Statistik', icon: TrendingUp }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                                activeTab === tab.id ? 'bg-brand-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
+                        >
+                            <tab.icon size={16}/> {tab.label}
+                            {tab.badge ? <span className="bg-red-500 text-white px-2 rounded-full text-[10px]">{tab.badge}</span> : null}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Products Grid */}
-                <div>
-                    <h3 className="text-white font-bold text-xl mb-4">Produk Saya ({myProducts.length})</h3>
-                    {myProducts.length === 0 ? (
-                        <div className="bg-dark-card border border-white/5 rounded-3xl p-10 text-center">
-                            <Package size={48} className="mx-auto text-gray-600 mb-4"/>
-                            <p className="text-gray-400">Kamu belum memiliki produk.</p>
+                {/* STATS TAB */}
+                {activeTab === 'stats' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+                        <div className="bg-[#1e293b] p-6 rounded-2xl border border-white/5">
+                            <div className="bg-green-500/10 w-12 h-12 rounded-xl flex items-center justify-center text-green-500 mb-4"><DollarSign size={24}/></div>
+                            <h3 className="text-gray-400 text-sm font-bold uppercase">Total Pendapatan</h3>
+                            <p className="text-3xl font-black text-white">Rp {stats.revenue.toLocaleString()}</p>
                         </div>
-                    ) : (
+                        <div className="bg-[#1e293b] p-6 rounded-2xl border border-white/5">
+                            <div className="bg-blue-500/10 w-12 h-12 rounded-xl flex items-center justify-center text-blue-500 mb-4"><CheckCircle size={24}/></div>
+                            <h3 className="text-gray-400 text-sm font-bold uppercase">Pesanan Selesai</h3>
+                            <p className="text-3xl font-black text-white">{stats.completed}</p>
+                        </div>
+                        <div className="bg-[#1e293b] p-6 rounded-2xl border border-white/5">
+                            <div className="bg-yellow-500/10 w-12 h-12 rounded-xl flex items-center justify-center text-yellow-500 mb-4"><Clock size={24}/></div>
+                            <h3 className="text-gray-400 text-sm font-bold uppercase">Menunggu Proses</h3>
+                            <p className="text-3xl font-black text-white">{stats.pending}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* ORDERS TAB */}
+                {activeTab === 'orders' && (
+                    <div className="space-y-4 animate-fade-in">
+                        {myOrders.length === 0 ? (
+                            <div className="text-center py-20 bg-[#1e293b] rounded-3xl border border-white/5 text-gray-500">
+                                <ShoppingCart size={40} className="mx-auto mb-4 opacity-30"/>
+                                <p>Belum ada pesanan masuk.</p>
+                            </div>
+                        ) : (
+                            myOrders.map(order => (
+                                <div key={order.id} className="bg-[#1e293b] border border-white/5 p-6 rounded-2xl flex flex-col md:flex-row justify-between gap-6 hover:border-brand-500/30 transition-all">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                order.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                order.status === 'PROCESSED' ? 'bg-blue-500/20 text-blue-500' :
+                                                'bg-green-500/20 text-green-500'
+                                            }`}>{order.status}</span>
+                                            <span className="text-xs text-gray-500">#{order.id}</span>
+                                            <span className="text-xs text-gray-500">• {new Date(order.createdAt).toLocaleString()}</span>
+                                        </div>
+                                        <h3 className="text-white font-bold text-lg mb-1">{order.productName}</h3>
+                                        <div className="bg-black/30 p-3 rounded-lg border border-white/5 text-sm space-y-1 mb-3">
+                                            <p className="text-gray-300"><span className="text-gray-500">Buyer:</span> {order.username}</p>
+                                            <p className="text-gray-300"><span className="text-gray-500">Data:</span> {JSON.stringify(order.gameData)}</p>
+                                            {order.paymentProof && (
+                                                <a href={order.paymentProof} target="_blank" className="text-brand-400 text-xs hover:underline">Lihat Bukti Bayar Buyer</a>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end justify-between">
+                                        <p className="text-xl font-bold text-brand-400">Rp {order.price.toLocaleString()}</p>
+                                        
+                                        {order.status === OrderStatus.PENDING && (
+                                            <button 
+                                                onClick={() => handleProcessOrder(order.id)}
+                                                className="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-brand-500/20"
+                                            >
+                                                Proses Pesanan
+                                            </button>
+                                        )}
+                                        {order.status === OrderStatus.PROCESSED && (
+                                            <div className="text-xs text-blue-400 font-bold bg-blue-500/10 px-3 py-2 rounded-lg text-center max-w-[200px]">
+                                                Pesanan diproses. Tunggu Buyer konfirmasi selesai atau Admin menyelesaikan.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {/* PRODUCTS TAB */}
+                {activeTab === 'products' && (
+                    <div className="animate-fade-in">
+                        {/* Add Product Form Toggle */}
+                        <div className="mb-8">
+                            {!showAddProduct ? (
+                                <button onClick={() => setShowAddProduct(true)} className="bg-brand-600 hover:bg-brand-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg">
+                                    <Plus size={20}/> Tambah Produk Baru
+                                </button>
+                            ) : (
+                                <div className="bg-dark-card border border-white/5 rounded-3xl p-8 animate-slide-up">
+                                    <h3 className="text-xl font-bold text-white mb-6">Input Produk Baru</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <input placeholder="Nama Produk" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.name || ''} onChange={e => setNewProduct({...newProduct, name: e.target.value})}/>
+                                        <input placeholder="Harga (Rp)" type="number" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})}/>
+                                        <select className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value as ProductType})}>
+                                            <option value="ITEM">Item Digital</option>
+                                            <option value="SKIN">Skin / Gift</option>
+                                            <option value="JOKI">Jasa Joki</option>
+                                            <option value="OTHER">Lainnya</option>
+                                        </select>
+                                        
+                                        <div className="relative group">
+                                            <input type="file" onChange={handleProductImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*"/>
+                                            <div className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white flex items-center gap-3">
+                                                <Upload size={18} className="text-gray-400"/>
+                                                <span className="text-sm text-gray-400 truncate">{newProduct.image ? 'Gambar Siap' : 'Upload Gambar'}</span>
+                                            </div>
+                                            {isUploading && <Loader2 className="animate-spin absolute right-2 top-3 text-white"/>}
+                                        </div>
+
+                                        <textarea placeholder="Deskripsi" className="md:col-span-2 bg-dark-bg border border-white/10 rounded-xl p-3 text-white h-24" value={newProduct.description || ''} onChange={e => setNewProduct({...newProduct, description: e.target.value})}/>
+                                        
+                                        <div className="md:col-span-2 flex gap-3">
+                                            <button onClick={() => setShowAddProduct(false)} className="px-6 py-3 rounded-xl border border-white/10 text-white hover:bg-white/5 font-bold">Batal</button>
+                                            <button onClick={handleAddProduct} className="flex-1 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg">Publish Produk</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Products Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {myProducts.length === 0 && !showAddProduct && (
+                                <div className="col-span-full text-center py-10 text-gray-500">Belum ada produk.</div>
+                            )}
                             {myProducts.map(p => (
                                 <div key={p.id} className="bg-dark-card border border-white/5 p-4 rounded-2xl flex flex-col gap-3 group relative hover:border-brand-500/30 transition-all">
                                     <div className="h-32 w-full bg-gray-800 rounded-xl overflow-hidden">
@@ -239,8 +382,8 @@ const OpenStore: React.FC = () => {
                                 </div>
                             ))}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -294,9 +437,23 @@ const OpenStore: React.FC = () => {
                                 rows={4}
                             />
                         </div>
-                        
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-xs text-blue-300">
-                            Dengan mendaftar, kamu menyetujui Syarat & Ketentuan seller yang berlaku di platform ini.
+
+                        {/* Agreement Checkbox */}
+                        <div className="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                            <input 
+                                type="checkbox" 
+                                checked={agreedToRules}
+                                onChange={e => setAgreedToRules(e.target.checked)}
+                                className="mt-1 w-5 h-5 accent-brand-500"
+                            />
+                            <div>
+                                <label className="text-sm text-gray-300">
+                                    Saya menyetujui semua <strong className="text-white">Peraturan Seller</strong> yang berlaku.
+                                </label>
+                                <div className="text-xs text-gray-500 mt-1 cursor-pointer underline hover:text-brand-400" onClick={() => alert("Lihat bagian Update Peraturan Seller di popup nanti.")}>
+                                    Baca Peraturan
+                                </div>
+                            </div>
                         </div>
 
                         <button 

@@ -18,9 +18,10 @@ export enum StoreStatus {
   SUSPENDED = 'SUSPENDED'
 }
 
+export type MembershipTier = 'NONE' | 'ELITE' | 'EPIC' | 'MASTER';
+
 export interface User {
   id: string; 
-  // shortId removed, using Firebase UID directly
   username: string;
   email: string;
   role: UserRole;
@@ -40,14 +41,20 @@ export interface User {
   followers: string[]; 
   following: string[];
   
+  // SUBSCRIPTION
+  membershipTier?: MembershipTier;
+  subscriptionEndsAt?: string; // ISO Date
+  lastFreeSpinClaim?: string;  // Track daily free spin
+
   // SELLER FIELDS
   isSeller?: boolean;
   storeName?: string;
   storeDescription?: string;
   storeRating?: number;
   storeStatus?: StoreStatus; 
-  storeLevel?: number; // Level Toko (1-5)
-  storeExp?: number;   // Pengalaman Toko untuk naik level
+  storeLevel?: number;
+  storeExp?: number;
+  hasAcceptedSellerRules?: boolean;
 }
 
 export interface ProductVariant {
@@ -80,14 +87,12 @@ export interface Product {
   discountEndsAt?: string;
   downloadUrl?: string;
   
-  // SELLER FIELDS
   sellerId?: string; 
   sellerName?: string;
   sellerLevel?: number; 
   isVerifiedStore?: boolean; 
   
-  // ADMIN FEATURES
-  isBoosted?: boolean; // Produk member yang diiklankan Admin ke Home
+  isBoosted?: boolean;
 }
 
 export interface CartItem {
@@ -101,7 +106,7 @@ export interface CartItem {
   inputData: { [key: string]: string };
   note?: string;
   sellerId?: string; 
-  couponCode?: string; // Menyimpan kode kupon yang diinput user
+  couponCode?: string;
   discountAmount?: number;
 }
 
@@ -123,12 +128,10 @@ export interface Coupon {
   discountAmount: number;
   isPublic: boolean;
   isActive: boolean;
-  
-  // New Constraints
-  validProductIds?: string[]; // Jika kosong, berlaku untuk semua produk ADMIN
-  maxUsage?: number; // Total berapa kali kupon bisa dipakai global
+  validProductIds?: string[];
+  maxUsage?: number;
   currentUsage?: number;
-  expiresAt?: string; // ISO String date
+  expiresAt?: string;
 }
 
 export interface SiteProfile {
@@ -143,7 +146,7 @@ export interface SiteProfile {
     whatsapp?: string;
     [key: string]: string | undefined;
   };
-  isLocked: boolean; // Maintenance Mode
+  isLocked: boolean;
   maintenanceMessage?: string;
   vipThresholds: {
     bronze: number;
@@ -185,7 +188,7 @@ export interface Order {
   paymentProof?: string;
   createdAt: string;
   downloadUrl?: string;
-  sellerId?: string; // Untuk EXP Seller
+  sellerId?: string; 
 }
 
 export interface PointHistory {
@@ -256,7 +259,7 @@ export interface ServiceRequest {
 export interface Report {
   id: string;
   reporterId: string;
-  targetId: string; // Bisa ID User, ID Produk, atau ID Toko
+  targetId: string;
   targetType: 'USER' | 'PRODUCT' | 'STORE';
   reason: string;
   description: string;
@@ -264,7 +267,6 @@ export interface Report {
   createdAt: string;
 }
 
-// NEW: Public Feedback Interface
 export interface Feedback {
   id: string;
   name: string;
@@ -279,14 +281,59 @@ export interface Archive {
     type: 'WEEKLY_CLEANUP';
     dataCount: number;
     sizeKB: number;
-    content: string; // JSON stringified data of deleted logs/orders
+    content: string;
 }
 
-// Konfigurasi Level Toko
+// EVENT SYSTEM TYPES
+export type PrizeType = 'POINT' | 'SUBSCRIPTION' | 'ZONK' | 'ITEM';
+
+export interface EventPrize {
+    id: string;
+    name: string;
+    type: PrizeType;
+    value: number; // Amount of points or days of sub
+    probability: number; // Percentage 0-100
+    color: string; // Hex for wheel segment
+}
+
+export interface EventConfig {
+    isActive: boolean;
+    spinCost: number;
+    prizes: EventPrize[];
+}
+
+// Config Constants
 export const STORE_LEVELS = [
   { level: 1, expRequired: 0, maxProducts: 5 },
   { level: 2, expRequired: 100, maxProducts: 10 },
   { level: 3, expRequired: 300, maxProducts: 20 },
   { level: 4, expRequired: 600, maxProducts: 50 },
-  { level: 5, expRequired: 1000, maxProducts: 999 } // Unlimited
+  { level: 5, expRequired: 1000, maxProducts: 999 }
+];
+
+export const MEMBERSHIP_PLANS = [
+    {
+        tier: 'ELITE' as MembershipTier,
+        name: 'Elite Member',
+        price: 2000,
+        duration: 7, // Days
+        color: 'from-blue-600 to-blue-400',
+        benefits: ['Bebas Biaya Admin', 'Badge Elite', '1x Free Spin / Hari']
+    },
+    {
+        tier: 'EPIC' as MembershipTier,
+        name: 'Epic Member',
+        price: 7500,
+        duration: 30, // Days
+        color: 'from-purple-600 to-purple-400',
+        benefits: ['Semua Benefit Elite', 'Bonus Poin 5%', 'Prioritas CS']
+    },
+    {
+        tier: 'MASTER' as MembershipTier,
+        name: 'Master Member',
+        price: 20000,
+        duration: 30, // Days
+        color: 'from-yellow-600 to-yellow-400',
+        benefits: ['Semua Benefit Epic', 'Bonus Poin 15%', '2x Free Spin / Hari', 'Akses Event Eksklusif']
+    }
 ];

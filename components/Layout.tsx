@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, UserRole, OrderStatus } from '../types';
+import { User, UserRole, OrderStatus, Order } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Bell, ShoppingCart, Shield, Store, Search, Home, Gamepad2, Users, ShoppingBag } from 'lucide-react';
+import { Bell, ShoppingCart, Shield, Store, Search, Home, Gamepad2, Users, ShoppingBag, Gift } from 'lucide-react';
 import { COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
@@ -23,12 +23,32 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   const [siteName, setSiteName] = useState<string>('Tamaonlyone Store');
   const [scrolled, setScrolled] = useState(false);
   
+  const prevOrdersRef = useRef<Order[]>([]);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { addToast } = useToast();
 
+  const sendNotification = (title: string, body: string) => {
+      try {
+          if ("Notification" in window && Notification.permission === 'granted') {
+              new Notification(title, { body, icon: '/icon.png' });
+          }
+      } catch (e) {
+          console.warn("Notification API error:", e);
+      }
+  };
+
   useEffect(() => {
     document.documentElement.classList.add('dark');
+    
+    try {
+        if ("Notification" in window && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+    } catch (e) {
+        console.warn("Notification permission request failed", e);
+    }
     
     const handleScroll = () => {
         setScrolled(window.scrollY > 20);
@@ -56,13 +76,49 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
     };
     checkCart();
     const cartInterval = setInterval(checkCart, 2000);
+    
     const unsubscribeOrders = StorageService.subscribeToOrders((allOrders) => {
+        let relevantOrders: Order[] = [];
+        
         if (user.role === UserRole.ADMIN) {
-            setUnreadCount(allOrders.filter(o => o.status === OrderStatus.PENDING).length);
+            relevantOrders = allOrders.filter(o => o.status === OrderStatus.PENDING);
+            setUnreadCount(relevantOrders.length);
+            
+            if (relevantOrders.length > prevOrdersRef.current.filter(o => o.status === OrderStatus.PENDING).length) {
+                sendNotification("Pesanan Baru!", "Ada pesanan baru menunggu proses.");
+                if (Notification.permission !== 'granted') addToast("Ada pesanan baru masuk!", "info");
+            }
+
         } else {
-            setUnreadCount(allOrders.filter(o => o.userId === user.id && (o.status === OrderStatus.PROCESSED || o.status === OrderStatus.PENDING)).length);
+            relevantOrders = allOrders.filter(o => o.userId === user.id && (o.status === OrderStatus.PROCESSED || o.status === OrderStatus.PENDING));
+            setUnreadCount(relevantOrders.length);
+
+            const myPrevOrders = prevOrdersRef.current.filter(o => o.userId === user.id);
+            const myCurrentOrders = allOrders.filter(o => o.userId === user.id);
+            
+            myCurrentOrders.forEach(curr => {
+                const prev = myPrevOrders.find(p => p.id === curr.id);
+                if (prev && prev.status !== curr.status) {
+                    const msg = `Order ${curr.productName} sekarang ${curr.status}`;
+                    addToast(msg, "success");
+                    sendNotification("Status Pesanan Berubah", msg);
+                }
+            });
+            
+            if (user.isSeller) {
+                const mySales = allOrders.filter(o => o.sellerId === user.id && o.status === OrderStatus.PENDING);
+                const prevSales = prevOrdersRef.current.filter(o => o.sellerId === user.id && o.status === OrderStatus.PENDING);
+                
+                if (mySales.length > prevSales.length) {
+                    sendNotification("Penjualan Baru!", "Seseorang membeli produkmu.");
+                    if (Notification.permission !== 'granted') addToast("Ada pesanan baru di tokomu!", "success");
+                }
+            }
         }
+        
+        prevOrdersRef.current = allOrders;
     });
+    
     return () => {
         clearInterval(cartInterval);
         unsubscribeOrders();
@@ -112,6 +168,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                 <Link to="/shop" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/shop') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                   <ShoppingBag size={18} /> Produk
                 </Link>
+                {user && !isAdmin && (
+                   <Link to="/event" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/event') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
+                     <Gift size={18} /> Event
+                   </Link>
+                )}
                 {user && !isAdmin && (
                    <Link to="/community" className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-white/10 text-brand-400' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                      <Users size={18} /> Komunitas
@@ -217,7 +278,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
         {children}
       </main>
 
-      {/* ================= DESKTOP FOOTER (Cleaned & Updated) ================= */}
+      {/* ================= DESKTOP FOOTER ================= */}
       <footer className="hidden md:block bg-[#0b1120] border-t border-white/5 py-12 mt-12 w-full">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
           {/* Brand Column */}

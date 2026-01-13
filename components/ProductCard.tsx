@@ -33,6 +33,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onBuy }) => {
         <img 
             src={product.image || "https://picsum.photos/200"} 
             alt={product.name} 
+            loading="lazy" // OPTIMIZATION: Lazy Load
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
         />
         
