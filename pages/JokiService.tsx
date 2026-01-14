@@ -4,8 +4,18 @@ import { StorageService } from '../services/storageService';
 import { Product, ServiceRequest } from '../types';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
-import { Zap, ShieldCheck, UserPlus, Loader2, ArrowLeft, Gamepad2 } from 'lucide-react';
+import { Zap, ShieldCheck, UserPlus, Loader2, ArrowLeft, Gamepad2, Check } from 'lucide-react';
 import { useToast } from '../components/Toast';
+
+// Predefined Popular Games for Joki
+const POPULAR_GAMES = [
+    { id: 'MLBB', name: 'Mobile Legends', icon: '⚔️' },
+    { id: 'PUBG', name: 'PUBG Mobile', icon: '🔫' },
+    { id: 'FF', name: 'Free Fire', icon: '🔥' },
+    { id: 'GENSHIN', name: 'Genshin Impact', icon: '✨' },
+    { id: 'VALORANT', name: 'Valorant', icon: '🎯' },
+    { id: 'OTHER', name: 'Lainnya', icon: '🎮' }
+];
 
 const JokiService: React.FC = () => {
     const navigate = useNavigate();
@@ -16,6 +26,7 @@ const JokiService: React.FC = () => {
     // Form State
     const [name, setName] = useState('');
     const [contact, setContact] = useState('');
+    const [game, setGame] = useState(POPULAR_GAMES[0].name);
     const [experience, setExperience] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,9 +44,14 @@ const JokiService: React.FC = () => {
     const handleRegisterJoki = async (e: React.FormEvent) => {
         e.preventDefault();
         const user = StorageService.getSession();
-        if(!user) return navigate('/login');
+        
+        if(!user) {
+            addToast("Anda wajib Login/Daftar akun dulu!", "error");
+            setTimeout(() => navigate('/login'), 1500);
+            return;
+        }
 
-        if(!name || !contact || !experience) return addToast("Mohon lengkapi formulir.", "error");
+        if(!name || !contact || !experience || !game) return addToast("Mohon lengkapi formulir pendaftaran.", "error");
 
         setIsSubmitting(true);
         const req: ServiceRequest = {
@@ -44,7 +60,7 @@ const JokiService: React.FC = () => {
             contact: contact,
             serviceType: 'JOKI_REGISTRATION',
             budget: 'N/A',
-            description: `Pengalaman: ${experience}. Username Web: ${user.username}`,
+            description: `Game: ${game}. Pengalaman: ${experience}. Username Web: ${user.username}`,
             status: 'OPEN',
             createdAt: new Date().toISOString()
         };
@@ -54,7 +70,7 @@ const JokiService: React.FC = () => {
         setName('');
         setContact('');
         setExperience('');
-        addToast("Permintaan daftar Joki terkirim! Admin akan menghubungi.", "success");
+        addToast("Permintaan daftar Joki terkirim! Admin akan meninjau profil Anda.", "success");
     };
 
     return (
@@ -79,6 +95,20 @@ const JokiService: React.FC = () => {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 py-8">
+                
+                {/* Game Category Filter Visual */}
+                <div className="mb-10">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Kategori Game Populer</h3>
+                    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                        {POPULAR_GAMES.filter(g => g.id !== 'OTHER').map(g => (
+                            <div key={g.id} className="flex items-center gap-2 bg-dark-card border border-white/5 px-4 py-2 rounded-xl min-w-max cursor-pointer hover:border-yellow-500/50 transition-colors">
+                                <span className="text-lg">{g.icon}</span>
+                                <span className="text-sm font-bold text-white">{g.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
                 {/* Product Listing */}
                 <div className="mb-16">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2 border-l-4 border-yellow-500 pl-4">
@@ -116,7 +146,7 @@ const JokiService: React.FC = () => {
                                 Hasilkan uang dari skill bermain game-mu. Bergabunglah sebagai mitra penjoki resmi kami dan dapatkan akses ke ribuan pelanggan potensial.
                             </p>
                             <ul className="space-y-3 mb-8">
-                                {['Verifikasi Akun Mudah', 'Sistem Pembayaran Aman', 'Fee Kompetitif', 'Komunitas Solid'].map((item, i) => (
+                                {['Wajib Punya Akun Member', 'Sistem Pembayaran Aman', 'Fee Kompetitif', 'Komunitas Solid'].map((item, i) => (
                                     <li key={i} className="flex items-center gap-3 text-gray-300 font-bold text-sm">
                                         <ShieldCheck className="text-green-500" size={18}/> {item}
                                     </li>
@@ -129,7 +159,7 @@ const JokiService: React.FC = () => {
                         <form onSubmit={handleRegisterJoki} className="space-y-4">
                             <div className="text-center mb-6 md:text-left">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <UserPlus size={20} className="text-yellow-500"/> Form Pendaftaran
+                                    <UserPlus size={20} className="text-yellow-500"/> Form Pendaftaran Joki
                                 </h3>
                             </div>
                             
@@ -151,6 +181,29 @@ const JokiService: React.FC = () => {
                                     placeholder="08xxxxxxxxxx"
                                 />
                             </div>
+                            
+                            {/* Game Selector */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-2">Spesialisasi Game</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {POPULAR_GAMES.map((g) => (
+                                        <div 
+                                            key={g.id}
+                                            onClick={() => setGame(g.name)}
+                                            className={`cursor-pointer px-3 py-2 rounded-lg border flex items-center gap-2 transition-all ${
+                                                game === g.name 
+                                                ? 'bg-yellow-500/20 border-yellow-500 text-white' 
+                                                : 'bg-black/20 border-white/10 text-gray-400 hover:bg-white/5'
+                                            }`}
+                                        >
+                                            <span>{g.icon}</span>
+                                            <span className="text-xs font-bold">{g.name}</span>
+                                            {game === g.name && <Check size={14} className="ml-auto text-yellow-500"/>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Pengalaman / Rank Tertinggi</label>
                                 <textarea 

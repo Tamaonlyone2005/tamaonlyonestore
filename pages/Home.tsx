@@ -32,16 +32,16 @@ const Home: React.FC = () => {
 
   const latestProducts = products.slice(0, 10); 
 
-  // Grid Menu Data
+  // Modern Grid Menu Data with Gradient Backgrounds
   const menuItems = [
-      { name: 'Mobile Games', icon: Gamepad2, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-      { name: 'Pulsa & Data', icon: Smartphone, color: 'text-green-400', bg: 'bg-green-500/10' },
-      { name: 'PC Games', icon: Monitor, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-      { name: 'Voucher', icon: Ticket, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-      { name: 'Jasa Joki', icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-500/10', path: '/joki' }, // Unlocked
-      { name: 'Top Up', icon: Wallet, color: 'text-pink-400', bg: 'bg-pink-500/10' },
-      { name: 'Web Apps', icon: Globe, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-      { name: 'Lainnya', icon: Grid, color: 'text-gray-400', bg: 'bg-gray-500/10' },
+      { name: 'Mobile Games', icon: Gamepad2, gradient: 'from-purple-500 to-indigo-600', shadow: 'shadow-purple-500/40' },
+      { name: 'Pulsa & Data', icon: Smartphone, gradient: 'from-green-500 to-emerald-600', shadow: 'shadow-green-500/40' },
+      { name: 'PC Games', icon: Monitor, gradient: 'from-blue-500 to-cyan-600', shadow: 'shadow-blue-500/40' },
+      { name: 'Voucher', icon: Ticket, gradient: 'from-orange-500 to-red-600', shadow: 'shadow-orange-500/40' },
+      { name: 'Jasa Joki', icon: Zap, gradient: 'from-yellow-400 to-amber-600', shadow: 'shadow-yellow-500/40', path: '/joki' },
+      { name: 'Top Up', icon: Wallet, gradient: 'from-pink-500 to-rose-600', shadow: 'shadow-pink-500/40' },
+      { name: 'Web Apps', icon: Globe, gradient: 'from-cyan-500 to-sky-600', shadow: 'shadow-cyan-500/40' },
+      { name: 'Lainnya', icon: Grid, gradient: 'from-gray-500 to-slate-600', shadow: 'shadow-gray-500/40' },
   ];
 
   const handleMenuClick = (item: any) => {
@@ -150,7 +150,7 @@ const Home: React.FC = () => {
                           </div>
                       </div>
                       
-                      {/* Action Buttons (Updated - Removed Event Link) */}
+                      {/* Action Buttons */}
                       <div className="grid grid-cols-2 gap-3 mt-4">
                            <button 
                               onClick={() => navigate('/shop?category=Voucher')}
@@ -172,20 +172,23 @@ const Home: React.FC = () => {
           {/* RAMADAN CALENDAR */}
           <RamadanCalendar />
 
-          {/* GRID MENU - UNLOCKED JOKI */}
+          {/* GRID MENU - MODERNIZED */}
           <div className="grid grid-cols-4 gap-y-6 gap-x-4">
               {menuItems.map((item, idx) => (
-                  <div key={idx} onClick={() => handleMenuClick(item)} className="flex flex-col items-center gap-2 relative group cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
-                      <div className={`w-14 h-14 ${item.bg} rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-95 transition-transform shadow-lg relative overflow-hidden`}>
-                          <item.icon size={24} className={item.color} />
-                          {/* Lock Icon Overlay if path missing */}
+                  <div key={idx} onClick={() => handleMenuClick(item)} className="flex flex-col items-center gap-2 relative group cursor-pointer opacity-95 hover:opacity-100 transition-all hover:scale-105">
+                      <div className={`w-14 h-14 bg-gradient-to-br ${item.gradient} rounded-2xl flex items-center justify-center shadow-lg ${item.shadow} relative overflow-hidden ring-2 ring-white/5 group-hover:ring-white/20 transition-all`}>
+                          <item.icon size={26} className="text-white drop-shadow-md" />
+                          
+                          {/* Inner Shine */}
+                          <div className="absolute top-0 left-0 w-full h-1/2 bg-white/10 pointer-events-none"></div>
+
                           {!item.path && (
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[1px]">
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
                                   <Lock size={14} className="text-white"/>
                               </div>
                           )}
                       </div>
-                      <span className="text-[11px] text-gray-400 text-center font-medium leading-tight">{item.name}</span>
+                      <span className="text-[11px] text-gray-300 text-center font-bold leading-tight group-hover:text-white transition-colors">{item.name}</span>
                   </div>
               ))}
           </div>
@@ -193,7 +196,7 @@ const Home: React.FC = () => {
           {/* FILTER PILLS */}
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pt-2">
               {['Semua', 'Game Items', 'Voucher', 'Premium Apps'].map((cat, idx) => (
-                  <button key={idx} onClick={() => navigate('/shop')} className="flex-shrink-0 px-5 py-2 rounded-full bg-dark-card border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/5 transition-all whitespace-nowrap">
+                  <button key={idx} onClick={() => navigate('/shop')} className="flex-shrink-0 px-5 py-2 rounded-full bg-dark-card border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/5 transition-all whitespace-nowrap hover:border-brand-500/50 hover:text-white">
                       {cat}
                   </button>
               ))}

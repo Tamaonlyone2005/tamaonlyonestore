@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, Info, Zap } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -24,7 +24,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000); // Slightly longer duration
+    }, 3500);
   }, []);
 
   const removeToast = (id: string) => {
@@ -34,39 +34,35 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed top-24 right-4 z-[100] flex flex-col gap-3 pointer-events-none w-full max-w-sm">
+      {/* Position: Top Center */}
+      <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-3 pointer-events-none w-full max-w-sm px-4">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-center gap-4 px-5 py-4 rounded-lg shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] animate-slide-up border-l-4 transition-all transform hover:scale-[1.02] ${
-              toast.type === 'success' ? 'bg-white border-green-500 text-gray-800' :
-              toast.type === 'error' ? 'bg-white border-red-500 text-gray-800' :
-              'bg-white border-blue-500 text-gray-800'
+            className={`pointer-events-auto flex items-center gap-4 px-5 py-4 rounded-2xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] animate-slide-up transition-all transform hover:scale-[1.02] border border-white/10 relative overflow-hidden ${
+              toast.type === 'success' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white' :
+              toast.type === 'error' ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' :
+              'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
             }`}
           >
-            <div className={`p-2 rounded-full shrink-0 ${
-               toast.type === 'success' ? 'bg-green-100 text-green-600' :
-               toast.type === 'error' ? 'bg-red-100 text-red-600' :
-               'bg-blue-100 text-blue-600'
-            }`}>
-                {toast.type === 'success' && <CheckCircle size={20} strokeWidth={3} />}
-                {toast.type === 'error' && <AlertCircle size={20} strokeWidth={3} />}
-                {toast.type === 'info' && <Info size={20} strokeWidth={3} />}
+            {/* Decorative Shine */}
+            <div className="absolute top-0 left-0 w-full h-full bg-white/5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 pointer-events-none"></div>
+
+            <div className="p-2 bg-white/20 rounded-full shrink-0 backdrop-blur-sm shadow-inner">
+                {toast.type === 'success' && <CheckCircle size={24} strokeWidth={3} className="text-white" />}
+                {toast.type === 'error' && <AlertTriangle size={24} strokeWidth={3} className="text-white" />}
+                {toast.type === 'info' && <Info size={24} strokeWidth={3} className="text-white" />}
             </div>
             
-            <div className="flex-1">
-                <h4 className={`text-xs font-black uppercase tracking-wider mb-0.5 ${
-                    toast.type === 'success' ? 'text-green-600' :
-                    toast.type === 'error' ? 'text-red-600' :
-                    'text-blue-600'
-                }`}>
-                    {toast.type === 'success' ? 'Sukses' : toast.type === 'error' ? 'Error' : 'Info'}
+            <div className="flex-1 relative z-10">
+                <h4 className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-0.5">
+                    {toast.type === 'success' ? 'Berhasil' : toast.type === 'error' ? 'Gagal' : 'Info'}
                 </h4>
-                <p className="text-sm font-bold text-gray-900 leading-tight">{toast.message}</p>
+                <p className="text-sm font-bold leading-tight shadow-black drop-shadow-md">{toast.message}</p>
             </div>
 
-            <button onClick={() => removeToast(toast.id)} className="text-gray-400 hover:text-gray-800 transition-colors p-1 bg-gray-100 hover:bg-gray-200 rounded-md">
-              <X size={16} />
+            <button onClick={() => removeToast(toast.id)} className="text-white/60 hover:text-white transition-colors p-1 hover:bg-white/20 rounded-lg z-10">
+              <X size={18} />
             </button>
           </div>
         ))}

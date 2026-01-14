@@ -116,10 +116,7 @@ const SellerList: React.FC = () => {
                                         {seller.storeDescription || "Tidak ada deskripsi toko."}
                                     </p>
 
-                                    <div className="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">
-                                        <div className="text-xs text-gray-500">
-                                            <span className="text-white font-bold">{seller.followers?.length || 0}</span> Pengikut
-                                        </div>
+                                    <div className="pt-4 border-t border-white/5 flex items-center justify-end mt-auto">
                                         <button className="text-xs font-bold text-brand-400 flex items-center gap-1 group-hover:underline">
                                             Kunjungi Toko <ArrowRight size={14}/>
                                         </button>

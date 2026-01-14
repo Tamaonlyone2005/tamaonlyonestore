@@ -586,6 +586,32 @@ export const StorageService = {
   managePoints: async (adminName: string, userId: string, amount: number, type: 'ADD' | 'SUBTRACT') => {
       return await StorageService.addPointTransaction(userId, amount, type, `Adjustment oleh Admin`, adminName);
   },
+  
+  // NEW: Delete Point History by Reason (e.g., Clean up Lucky Wheel History)
+  deletePointHistoryByReason: async (reasonKeyword: string): Promise<number> => {
+      if (!isRemoteEnabled || !db) return 0;
+      let count = 0;
+      try {
+          const batch = writeBatch(db);
+          // Query all point history
+          const snap = await getDocs(collection(db, 'point_history'));
+          
+          snap.forEach(doc => {
+              const data = doc.data() as PointHistory;
+              if (data.reason.toLowerCase().includes(reasonKeyword.toLowerCase())) {
+                  batch.delete(doc.ref);
+                  count++;
+              }
+          });
+          
+          if(count > 0) {
+              await batch.commit();
+          }
+      } catch(e) {
+          console.error("Cleanup Error:", e);
+      }
+      return count;
+  },
 
   getCoupons: async (): Promise<Coupon[]> => getCollection<Coupon>('coupons'),
   saveCoupon: async (coupon: Coupon) => { await setDocument('coupons', coupon.id, coupon); },
@@ -618,6 +644,10 @@ export const StorageService = {
   },
 
   createServiceRequest: async (req: ServiceRequest) => { await setDocument('service_requests', req.id, req); },
+  
+  getServiceRequests: async (): Promise<ServiceRequest[]> => {
+      return await getCollection<ServiceRequest>('service_requests');
+  },
 
   createReport: async (report: Report) => { await setDocument('reports', report.id, report); },
   getReports: async (): Promise<Report[]> => getCollection<Report>('reports'),
