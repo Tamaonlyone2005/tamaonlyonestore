@@ -1,5 +1,4 @@
 
-
 import { db, initializationSuccessful } from './firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, onSnapshot, getDoc, writeBatch } from "firebase/firestore";
 import { User, Product, SiteProfile, Order, OrderStatus, ChatMessage, PointHistory, ActivityLog, ChatGroup, ChatSession, VipLevel, Coupon, CartItem, Review, ServiceRequest, ProductType, UserRole, StoreStatus, Report, STORE_LEVELS, Archive, Feedback, MEMBERSHIP_PLANS, MembershipTier, EventConfig } from '../types';
@@ -371,6 +370,16 @@ export const StorageService = {
           } catch(e) { handleRemoteError(e); }
       }
       await StorageService.logActivity(ADMIN_ID, "Administrator", "PRODUCT_BOOST", `Mengubah status boost produk ${productId} menjadi ${isBoosted}`);
+  },
+
+  toggleFlashSale: async (productId: string, isFlashSale: boolean) => {
+      if (isRemoteEnabled && db) {
+          try {
+              const productRef = doc(db, 'products', productId);
+              await updateDoc(productRef, { isFlashSale });
+          } catch(e) { handleRemoteError(e); }
+      }
+      await StorageService.logActivity(ADMIN_ID, "Administrator", "FLASH_SALE_UPDATE", `Mengubah status Flash Sale produk ${productId} menjadi ${isFlashSale}`);
   },
 
   getOrders: async (): Promise<Order[]> => {

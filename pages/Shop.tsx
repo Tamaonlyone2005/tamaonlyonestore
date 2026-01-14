@@ -5,7 +5,7 @@ import { Product, User, CartItem } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ProductSkeleton } from '../components/Skeleton';
-import { Search, Filter, Package, X, ShoppingCart, ArrowRight, Info } from 'lucide-react';
+import { Search, Filter, Package, X, ShoppingCart, ArrowRight, Info, Zap } from 'lucide-react';
 import { useToast } from '../components/Toast';
 
 interface ShopProps {
@@ -27,32 +27,38 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
   const location = useLocation();
   const { addToast } = useToast();
 
-  // Get query param for category filter if exists
+  // 1. Fetch Products Only Once
   useEffect(() => {
       const load = async () => {
           setLoading(true);
           const data = await StorageService.getGlobalProducts();
           setProducts(data);
           setLoading(false);
-          
-          // Check for product ID in URL after products are loaded
-          const params = new URLSearchParams(location.search);
-          const cat = params.get('category');
-          const prodId = params.get('product');
-
-          if (cat) setSelectedCategory(cat);
-          
-          if (prodId) {
-              const found = data.find(p => p.id === prodId);
-              if (found) {
-                  setSelectedProduct(found);
-                  // Initialize default input fields if specific logic existed
-                  setInputData({});
-              }
-          }
       };
       load();
-  }, [location.search]);
+  }, []);
+
+  // 2. Handle URL Params (Opening Modal) - Dependent on 'products' being loaded
+  useEffect(() => {
+      if (loading || products.length === 0) return;
+
+      const params = new URLSearchParams(location.search);
+      const cat = params.get('category');
+      const prodId = params.get('product');
+
+      if (cat) setSelectedCategory(cat);
+      
+      if (prodId) {
+          const found = products.find(p => p.id === prodId);
+          if (found) {
+              setSelectedProduct(found);
+              setInputData({});
+          }
+      } else {
+          // If no product ID in URL, close modal if open
+          setSelectedProduct(null);
+      }
+  }, [location.search, loading, products]);
 
   // Unique Categories
   const categories = ['All', ...Array.from(new Set(products.map(p => p.category || 'General')))];
@@ -65,29 +71,18 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
   });
 
   const handleProductClick = (product: Product) => {
-      // Update URL without reload to support sharing
-      const newUrl = `${window.location.pathname}#/shop?product=${product.id}`;
-      window.history.pushState({path: newUrl}, '', newUrl);
-      
-      setSelectedProduct(product);
-      setInputData({});
+      // Update URL to trigger modal via useEffect
+      navigate(`/shop?product=${product.id}${selectedCategory !== 'All' ? `&category=${selectedCategory}` : ''}`);
   };
 
   const closeModal = () => {
-      setSelectedProduct(null);
-      // Remove product param from URL
-      navigate('/shop'); 
+      // Navigate back to shop root (preserving category if desired, or clean)
+      navigate(`/shop${selectedCategory !== 'All' ? `?category=${selectedCategory}` : ''}`);
   };
 
   const handleAddToCart = async () => {
       if(!user) return navigate('/login');
       if(!selectedProduct) return;
-      
-      // Basic Validation: If game, usually need ID. 
-      // For now, we assume if type is JOKI or ITEM, inputs might be needed.
-      // Since inputFields schema in types.ts is optional, we check if we want to enforce generic ID.
-      // Let's enforce ID for GAME items if we had that logic. 
-      // For this update, we allow adding even if empty, unless we add specific fields.
       
       setAddingToCart(true);
       
@@ -95,10 +90,10 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
           id: Date.now().toString(),
           productId: selectedProduct.id,
           productName: selectedProduct.name,
-          price: selectedProduct.price,
+          price: selectedProduct.isFlashSale ? selectedProduct.price : selectedProduct.price, // Price is already display price
           image: selectedProduct.image,
           quantity: 1,
-          inputData: inputData, // Capture inputs (UserId, ServerId, etc)
+          inputData: inputData, 
           sellerId: selectedProduct.sellerId
       };
 
@@ -130,7 +125,10 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                     {categories.map(cat => (
                         <button 
                             key={cat}
-                            onClick={() => setSelectedCategory(cat)}
+                            onClick={() => {
+                                setSelectedCategory(cat);
+                                navigate(`/shop?category=${cat}`);
+                            }}
                             className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
                                 selectedCategory === cat 
                                 ? 'bg-brand-600 border-brand-500 text-white' 
@@ -192,6 +190,9 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                     {/* Content */}
                     <div className="p-6 overflow-y-auto">
                         <div className="mb-6">
+                            <div className="flex items-center gap-2 mb-1">
+                                {selectedProduct.isFlashSale && <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-bold flex items-center gap-1"><Zap size={10} fill="currentColor"/> FLASH SALE</span>}
+                            </div>
                             <h2 className="text-2xl font-bold text-white mb-1">{selectedProduct.name}</h2>
                             <p className="text-brand-400 font-bold text-xl">Rp {selectedProduct.price.toLocaleString()}</p>
                             <div className="flex gap-2 mt-2">

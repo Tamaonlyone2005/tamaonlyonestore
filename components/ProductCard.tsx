@@ -40,6 +40,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onBuy }) => {
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
         />
         
+        {/* Flash Sale Badge */}
+        {product.isFlashSale && (
+            <div className="absolute top-0 left-0 bg-red-600 text-white text-[9px] font-black px-2 py-1 z-20 rounded-br-lg shadow-lg flex items-center gap-1 animate-pulse">
+                <Zap size={10} fill="currentColor"/> FLASH SALE
+            </div>
+        )}
+        
         {/* Type Badge */}
         <div className="absolute top-1 right-1 flex gap-1 z-10">
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase backdrop-blur-md border border-white/10 ${
@@ -53,7 +60,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onBuy }) => {
         </div>
 
         {/* Share Button (Absolute Overlay) */}
-        <button onClick={handleShare} className="absolute top-1 left-1 p-1.5 bg-black/40 hover:bg-brand-600 rounded-full text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <button onClick={handleShare} className="absolute top-8 left-1 p-1.5 bg-black/40 hover:bg-brand-600 rounded-full text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10">
             <Share2 size={12}/>
         </button>
       </div>
@@ -67,6 +74,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onBuy }) => {
         <div className="mt-auto">
             <div className="flex items-center gap-1 mb-1">
                  <p className="text-brand-400 font-extrabold text-sm md:text-base group-hover:text-brand-300">Rp {product.price.toLocaleString()}</p>
+                 {product.isFlashSale && (
+                     <span className="text-[9px] text-gray-500 line-through decoration-red-500">Rp {(product.price * 1.2).toLocaleString()}</span>
+                 )}
             </div>
             
             {/* Seller Info Line */}

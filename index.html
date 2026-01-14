@@ -58,6 +58,7 @@
               'slide-up': 'slideUp 0.5s ease-out',
               'float': 'float 3s ease-in-out infinite',
               'sway': 'sway 3s ease-in-out infinite',
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             },
             keyframes: {
               fadeIn: {
@@ -100,18 +101,10 @@
         background-color: #022c22;
         color: #ecfdf5;
         font-family: 'Inter', sans-serif;
-        /* Ramadan Theme: Islamic Geometric Pattern Overlay */
-        background-image: 
-            radial-gradient(circle at 50% 0%, #064e3b 0%, transparent 80%),
-            linear-gradient(30deg, #064e3b 12%, transparent 12.5%, transparent 87%, #064e3b 87.5%, #064e3b),
-            linear-gradient(150deg, #064e3b 12%, transparent 12.5%, transparent 87%, #064e3b 87.5%, #064e3b),
-            linear-gradient(30deg, #064e3b 12%, transparent 12.5%, transparent 87%, #064e3b 87.5%, #064e3b),
-            linear-gradient(150deg, #064e3b 12%, transparent 12.5%, transparent 87%, #064e3b 87.5%, #064e3b),
-            linear-gradient(60deg, #065f46 25%, transparent 25.5%, transparent 75%, #065f46 75%, #065f46),
-            linear-gradient(60deg, #065f46 25%, transparent 25.5%, transparent 75%, #065f46 75%, #065f46);
-        background-size: 100% 100%, 80px 140px, 80px 140px, 80px 140px, 80px 140px, 80px 140px, 80px 140px;
-        background-position: 0 0, 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+        /* PERFORMANCE FIX: Removed complex CSS patterns. Using simple gradient */
+        background-image: linear-gradient(to bottom right, #022c22, #064e3b, #022c22);
         background-attachment: fixed;
+        min-height: 100vh;
       }
       .no-scrollbar::-webkit-scrollbar {
           display: none;

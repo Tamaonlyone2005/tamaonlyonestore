@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import NewsTicker from '../components/NewsTicker';
 import FlashSale from '../components/FlashSale';
+import RamadanCalendar from '../components/RamadanCalendar';
 import { ChevronRight, Package, Wallet, History, Gamepad2, Smartphone, Monitor, Ticket, Zap, Globe, Grid, Lock, Crown, Gift, Moon, Star } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
@@ -164,6 +165,9 @@ const Home: React.FC = () => {
                   </div>
               </div>
           )}
+
+          {/* RAMADAN CALENDAR */}
+          <RamadanCalendar />
 
           {/* GRID MENU - LOCKED */}
           <div className="grid grid-cols-4 gap-y-6 gap-x-4">
