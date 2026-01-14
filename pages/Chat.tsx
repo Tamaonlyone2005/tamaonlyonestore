@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
-import { User, ChatMessage, UserRole, ChatGroup, ChatSession } from '../types';
+import { BotService } from '../services/botService';
+import { User, ChatMessage, UserRole, ChatGroup, ChatSession, SiteProfile } from '../types';
 import { Send, ArrowLeft, Headset, Users, MessageCircle } from 'lucide-react';
 import { useToast } from '../components/Toast';
 
@@ -11,6 +12,7 @@ const Chat: React.FC = () => {
   const location = useLocation();
   const { addToast } = useToast();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [siteProfile, setSiteProfile] = useState<SiteProfile | null>(null);
   
   const queryParams = new URLSearchParams(location.search);
   const targetUserId = queryParams.get('userId'); 
@@ -33,6 +35,9 @@ const Chat: React.FC = () => {
         const session = StorageService.getSession();
         if (!session) return navigate('/login');
         setCurrentUser(session);
+
+        const profile = await StorageService.getProfile();
+        setSiteProfile(profile);
 
         // Fetch Groups
         const allGroups = await StorageService.getChatGroups();
@@ -87,11 +92,17 @@ const Chat: React.FC = () => {
   const handleSend = async () => {
     if (!inputText.trim() || !currentUser) return;
     
+    // BOT INTEGRATION: Moderate Message Content
+    let finalContent = inputText;
+    if (siteProfile) {
+        finalContent = BotService.moderateMessage(inputText, siteProfile);
+    }
+
     let msg: ChatMessage = {
         id: Date.now().toString(),
         senderId: currentUser.id,
         senderName: currentUser.username,
-        content: inputText,
+        content: finalContent,
         isRead: false,
         timestamp: new Date().toISOString()
     };
@@ -115,6 +126,11 @@ const Chat: React.FC = () => {
 
     await StorageService.sendChat(msg);
     setInputText('');
+
+    // BOT INTEGRATION: Check for Auto Reply (Support Mode Only)
+    if (chatMode === 'support' && siteProfile && currentUser.role !== UserRole.ADMIN) {
+        BotService.checkAutoReply(msg, siteProfile);
+    }
   };
 
   return (

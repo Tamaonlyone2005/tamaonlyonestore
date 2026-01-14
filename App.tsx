@@ -18,6 +18,7 @@ import Cart from './pages/Cart';
 import OpenStore from './pages/OpenStore';
 import Help from './pages/Help';
 import FeedbackPage from './pages/FeedbackPage';
+import JokiService from './pages/JokiService';
 import { ToastProvider } from './components/Toast';
 import { AlertTriangle } from 'lucide-react';
 
@@ -73,6 +74,7 @@ const App: React.FC = () => {
             <Route path="/" element={<Home />} />
             <Route path="/shop" element={<Shop user={user} />} />
             <Route path="/sellers" element={<SellerList />} />
+            <Route path="/joki" element={<JokiService />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/login" element={user ? <Navigate to="/shop" /> : <Login onLogin={refreshSession} />} />
             <Route path="/register" element={user ? <Navigate to="/shop" /> : <Register onLogin={refreshSession} />} />

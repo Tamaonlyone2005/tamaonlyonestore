@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   ADMIN = 'ADMIN',
   MEMBER = 'MEMBER',
@@ -135,6 +134,14 @@ export interface Coupon {
   expiresAt?: string;
 }
 
+export interface BotConfig {
+  isModerationActive: boolean;
+  isAutoReplyActive: boolean;
+  botName: string;
+  badWords: string[];
+  autoReplyMessage: string;
+}
+
 export interface SiteProfile {
   name: string;
   description: string;
@@ -154,6 +161,7 @@ export interface SiteProfile {
     silver: number;
     gold: number;
   };
+  botConfig?: BotConfig;
 }
 
 export interface AuthResponse {

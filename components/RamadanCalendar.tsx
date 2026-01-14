@@ -1,12 +1,14 @@
 
-import React, { useRef, useEffect } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Moon, Sun, Clock } from 'lucide-react';
 
 const RamadanCalendar: React.FC = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0 });
 
     // Mock Data for Ramadan 2026 (Starting roughly Feb 18)
-    const startDate = new Date('2026-02-18');
+    const startDate = new Date('2026-02-18T00:00:00');
+    
     const schedule = Array.from({ length: 30 }, (_, i) => {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
@@ -30,23 +32,46 @@ const RamadanCalendar: React.FC = () => {
         };
     });
 
-    // Find "Today" index relative to mock start
-    const today = new Date();
-    // For demo purposes, if today isn't in range, default to Day 1
     const currentIndex = 0; 
 
     useEffect(() => {
         if (scrollRef.current) {
-            // Scroll to start or current day
             scrollRef.current.scrollLeft = 0;
         }
+
+        const interval = setInterval(() => {
+            const now = new Date();
+            const diff = startDate.getTime() - now.getTime();
+            
+            if (diff > 0) {
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                setCountdown({ days, hours, minutes });
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
     }, []);
 
     return (
         <div className="mb-8 animate-fade-in">
-            <div className="flex items-center gap-2 px-4 mb-3">
-                <Moon className="text-gold-400 fill-current" size={18}/>
-                <h3 className="font-bold text-white text-lg">Jadwal Imsakiyah 2026</h3>
+            <div className="flex flex-col md:flex-row md:items-center justify-between px-4 mb-3 gap-2">
+                <div className="flex items-center gap-2">
+                    <Moon className="text-gold-400 fill-current" size={18}/>
+                    <h3 className="font-bold text-white text-lg">Jadwal Imsakiyah 2026</h3>
+                </div>
+                
+                {/* Countdown Timer */}
+                <div className="flex items-center gap-2 bg-brand-600/20 px-3 py-1.5 rounded-lg border border-brand-500/30">
+                    <Clock size={14} className="text-brand-400 animate-pulse"/>
+                    <span className="text-xs text-brand-200">Menuju Ramadhan:</span>
+                    <div className="flex gap-1 text-xs font-bold font-mono text-white">
+                        <span>{countdown.days}h</span> : 
+                        <span>{countdown.hours}j</span> : 
+                        <span>{countdown.minutes}m</span>
+                    </div>
+                </div>
             </div>
             
             <div 

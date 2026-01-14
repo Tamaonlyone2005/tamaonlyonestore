@@ -28,11 +28,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(false);
     
     if (res.success) {
+      // CUSTOM WELCOME MESSAGE
+      addToast(`Selamat Datang Kembali, ${res.user?.username || 'User'}!`, "success");
+      
       onLogin();
       if (res.user?.role === 'ADMIN') navigate('/admin');
       else navigate('/shop');
     } else {
       setError(res.message);
+      addToast(res.message, "error");
     }
   };
   

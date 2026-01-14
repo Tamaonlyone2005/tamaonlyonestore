@@ -36,6 +36,13 @@ export const DEFAULT_PROFILE = {
     bronze: 5,
     silver: 15,
     gold: 30
+  },
+  botConfig: {
+      isModerationActive: true,
+      isAutoReplyActive: true,
+      botName: "TamaBot 🤖",
+      badWords: ["kasar", "anjing", "babi", "scam", "penipu"],
+      autoReplyMessage: "Halo! Admin sedang tidak aktif saat ini. Mohon tinggalkan pesan, kami akan segera kembali. 🙏"
   }
 };
 
