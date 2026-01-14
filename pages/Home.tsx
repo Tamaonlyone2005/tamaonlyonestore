@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { StorageService } from '../services/storageService';
-import { Product, User } from '../types';
+import { Product, User, UserRole } from '../types';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import NewsTicker from '../components/NewsTicker';
@@ -47,6 +47,9 @@ const Home: React.FC = () => {
   const handleMenuClick = (item: any) => {
       if (item.path) {
           navigate(item.path);
+      } else if (user?.role === UserRole.ADMIN) {
+          addToast(`Admin Access: Membuka fitur ${item.name}`, "success");
+          navigate('/shop'); // Placeholder for now, or route to generic shop category
       } else {
           addToast(`Fitur ${item.name} akan segera hadir!`, "info");
       }
@@ -182,9 +185,14 @@ const Home: React.FC = () => {
                           {/* Inner Shine */}
                           <div className="absolute top-0 left-0 w-full h-1/2 bg-white/10 pointer-events-none"></div>
 
-                          {!item.path && (
+                          {!item.path && user?.role !== UserRole.ADMIN && (
                               <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
                                   <Lock size={14} className="text-white"/>
+                              </div>
+                          )}
+                          {!item.path && user?.role === UserRole.ADMIN && (
+                              <div className="absolute top-1 right-1">
+                                  <span className="block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                               </div>
                           )}
                       </div>

@@ -142,6 +142,13 @@ export interface BotConfig {
   autoReplyMessage: string;
 }
 
+export interface DigiFlazzConfig {
+    username: string;
+    apiKey: string;
+    mode: 'development' | 'production';
+    isActive: boolean;
+}
+
 export interface SiteProfile {
   name: string;
   description: string;
@@ -162,6 +169,7 @@ export interface SiteProfile {
     gold: number;
   };
   botConfig?: BotConfig;
+  digiFlazzConfig?: DigiFlazzConfig;
 }
 
 export interface AuthResponse {
@@ -261,7 +269,7 @@ export interface ServiceRequest {
   serviceType: string;
   budget: string;
   description: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED';
+  status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED' | 'REJECTED';
   createdAt: string;
 }
 
@@ -282,6 +290,7 @@ export interface Feedback {
   message: string;
   createdAt: string;
   isRead: boolean;
+  timestamp?: string; // Optional alias for createdAt for sorting consistency
 }
 
 export interface Archive {

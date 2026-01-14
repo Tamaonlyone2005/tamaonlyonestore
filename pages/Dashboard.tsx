@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive, Feedback, BotConfig, ServiceRequest } from '../types';
-import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare, ChevronDown, ChevronRight, Zap, Bot, Swords, AlertTriangle } from 'lucide-react';
+import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive, Feedback, ServiceRequest } from '../types';
+import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare, ChevronDown, ChevronRight, Zap, Bot, Swords, AlertTriangle, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { DEFAULT_PROFILE } from '../constants';
@@ -56,7 +56,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   // Form States
   const [newProduct, setNewProduct] = useState<Partial<Product>>({ type: 'ITEM' });
-  const [searchTerm, setSearchTerm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   
   // Store Management State
@@ -363,6 +362,20 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       }
   };
 
+  // Fixed Joki Action Handler
+  const handleJokiAction = async (req: ServiceRequest, action: 'ACCEPT' | 'REJECT') => {
+      if(action === 'ACCEPT') {
+          await StorageService.updateServiceRequestStatus(req.id, 'IN_PROGRESS');
+          addToast("Permintaan diterima! Status diubah ke In Progress.", "success");
+          // Optionally auto-create chat logic here if needed
+          navigate(`/chat?userId=${req.id.replace('JOKI_', '')}`); // Assuming custom logic to link ID to user
+      } else {
+          await StorageService.updateServiceRequestStatus(req.id, 'REJECTED');
+          addToast("Permintaan ditolak.", "info");
+      }
+      refreshData();
+  };
+
   const handleDownloadArchive = (content: string, date: string) => {
       const blob = new Blob([content], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -406,7 +419,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             {[
                 { id: 'overview', label: 'Ringkasan', icon: TrendingUp },
                 { id: 'orders', label: 'Pesanan Masuk', icon: ShoppingCart, badge: stats.pendingOrders },
-                { id: 'joki', label: 'Permintaan Joki', icon: Swords }, // New Tab
+                { id: 'joki', label: 'Permintaan Joki', icon: Swords }, 
                 { id: 'members', label: 'Daftar Member', icon: Users },
                 { id: 'stores', label: 'Manajemen Toko', icon: Store },
                 { id: 'products', label: 'Katalog Produk', icon: Package },
@@ -507,7 +520,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                   <div key={req.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between gap-6 hover:border-brand-500/30 transition-all">
                                       <div className="space-y-2">
                                           <div className="flex items-center gap-2">
-                                              <span className="bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded text-xs font-bold border border-yellow-500/20">{req.status}</span>
+                                              <span className={`bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded text-xs font-bold border border-yellow-500/20 ${req.status === 'REJECTED' ? 'bg-red-500/20 text-red-500 border-red-500/20' : req.status === 'IN_PROGRESS' ? 'bg-green-500/20 text-green-500 border-green-500/20' : ''}`}>{req.status}</span>
                                               <span className="text-gray-500 text-xs">{new Date(req.createdAt).toLocaleString()}</span>
                                           </div>
                                           <h4 className="text-xl font-bold text-white">{req.name}</h4>
@@ -517,8 +530,13 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                           </div>
                                       </div>
                                       <div className="flex flex-col gap-2 justify-center min-w-[150px]">
-                                          <button className="bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-xl font-bold text-sm shadow-lg">Terima & Chat</button>
-                                          <button className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white py-2 rounded-xl font-bold text-sm transition-all border border-red-500/20">Tolak</button>
+                                          {req.status === 'OPEN' && (
+                                              <>
+                                                  <button onClick={() => handleJokiAction(req, 'ACCEPT')} className="bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-xl font-bold text-sm shadow-lg">Terima & Chat</button>
+                                                  <button onClick={() => handleJokiAction(req, 'REJECT')} className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white py-2 rounded-xl font-bold text-sm transition-all border border-red-500/20">Tolak</button>
+                                              </>
+                                          )}
+                                          {req.status !== 'OPEN' && <span className="text-center text-gray-500 text-xs">Aksi selesai</span>}
                                       </div>
                                   </div>
                               ))}
@@ -564,7 +582,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                  </div>
                              </div>
 
-                             <div className="grid grid-cols-1 gap-6">
+                             <div className="grid grid-cols-1 gap-6 mb-8">
                                  <div>
                                      <label className="block text-sm text-gray-400 mb-2">Nama Toko</label>
                                      <input value={siteProfile.name} onChange={e => setSiteProfile({...siteProfile, name: e.target.value})} className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white"/>
@@ -574,14 +592,127 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                      <textarea value={siteProfile.description} onChange={e => setSiteProfile({...siteProfile, description: e.target.value})} className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" rows={3}/>
                                  </div>
                              </div>
+
+                             {/* DIGIFLAZZ CONFIG */}
+                             <div className="p-6 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
+                                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Zap size={18} className="text-blue-400"/> Integrasi Digiflazz (Otomatis Topup)</h3>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 mb-1">Username</label>
+                                         <input 
+                                            value={siteProfile.digiFlazzConfig?.username || ''} 
+                                            onChange={e => setSiteProfile({
+                                                ...siteProfile, 
+                                                digiFlazzConfig: { ...siteProfile.digiFlazzConfig!, username: e.target.value }
+                                            })}
+                                            className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white"
+                                            placeholder="Digiflazz Username"
+                                         />
+                                     </div>
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 mb-1">API Key (Production/Dev)</label>
+                                         <div className="relative">
+                                             <Key size={16} className="absolute left-3 top-3 text-gray-500"/>
+                                             <input 
+                                                type="password"
+                                                value={siteProfile.digiFlazzConfig?.apiKey || ''} 
+                                                onChange={e => setSiteProfile({
+                                                    ...siteProfile, 
+                                                    digiFlazzConfig: { ...siteProfile.digiFlazzConfig!, apiKey: e.target.value }
+                                                })}
+                                                className="w-full bg-black/20 border border-white/10 rounded-xl pl-10 pr-3 py-3 text-white"
+                                                placeholder="Key rahasia..."
+                                             />
+                                         </div>
+                                     </div>
+                                     <div>
+                                         <label className="block text-xs font-bold text-gray-500 mb-1">Mode</label>
+                                         <select 
+                                            value={siteProfile.digiFlazzConfig?.mode || 'development'}
+                                            onChange={e => setSiteProfile({
+                                                ...siteProfile,
+                                                digiFlazzConfig: { ...siteProfile.digiFlazzConfig!, mode: e.target.value as 'development' | 'production' }
+                                            })}
+                                            className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white"
+                                         >
+                                             <option value="development">Development (Sandbox)</option>
+                                             <option value="production">Production (Live)</option>
+                                         </select>
+                                     </div>
+                                     <div className="flex items-end">
+                                         <button 
+                                            onClick={() => setSiteProfile({
+                                                ...siteProfile,
+                                                digiFlazzConfig: { ...siteProfile.digiFlazzConfig!, isActive: !siteProfile.digiFlazzConfig?.isActive }
+                                            })}
+                                            className={`w-full py-3 rounded-xl font-bold transition-all ${siteProfile.digiFlazzConfig?.isActive ? 'bg-green-600 text-white' : 'bg-white/10 text-gray-400'}`}
+                                         >
+                                             {siteProfile.digiFlazzConfig?.isActive ? 'STATUS: AKTIF' : 'STATUS: NONAKTIF'}
+                                         </button>
+                                     </div>
+                                 </div>
+                                 <p className="text-[10px] text-gray-500 mt-2">*API Key ini tersimpan di database. Pastikan keamanan backend terjaga.</p>
+                             </div>
                         </div>
                     </>
                 )}
             </div>
           )}
           
-          {/* ... Other tabs (Orders, Members, etc.) remain mostly similar but with increased padding/gap ... */}
-          
+          {/* TAB: ORDERS */}
+          {activeTab === 'orders' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                      <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><ShoppingCart size={24}/> Daftar Pesanan Masuk</h3>
+                      {orders.length === 0 ? (
+                          <div className="text-center py-12 text-gray-500 border border-dashed border-white/5 rounded-2xl">Belum ada pesanan masuk.</div>
+                      ) : (
+                          <div className="space-y-4">
+                              {orders.map(order => (
+                                  <div key={order.id} className="bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-all">
+                                      <div className="flex flex-col md:flex-row justify-between gap-4">
+                                          <div>
+                                              <div className="flex items-center gap-2 mb-2">
+                                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                      order.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                      order.status === 'COMPLETED' ? 'bg-green-500/20 text-green-500' :
+                                                      'bg-blue-500/20 text-blue-500'
+                                                  }`}>{order.status}</span>
+                                                  <span className="text-xs text-gray-400">#{order.id}</span>
+                                                  <span className="text-xs text-gray-400">• {new Date(order.createdAt).toLocaleString()}</span>
+                                              </div>
+                                              <h4 className="font-bold text-white text-lg">{order.productName}</h4>
+                                              <p className="text-sm text-gray-400">Buyer: <span className="text-brand-400 font-bold">{order.username}</span> ({order.whatsapp})</p>
+                                              <div className="bg-black/30 p-2 rounded mt-2 text-xs font-mono text-gray-300">
+                                                  Data: {JSON.stringify(order.gameData)}
+                                              </div>
+                                          </div>
+                                          <div className="flex flex-col items-end gap-2">
+                                              <p className="text-xl font-bold text-white">Rp {order.price.toLocaleString()}</p>
+                                              <div className="flex gap-2">
+                                                  {order.status === OrderStatus.PENDING && (
+                                                      <>
+                                                          <button onClick={() => handleOrderStatus(order.id, OrderStatus.PROCESSED)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold">Proses</button>
+                                                          <button onClick={() => handleOrderStatus(order.id, OrderStatus.CANCELLED)} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-xs font-bold">Batal</button>
+                                                      </>
+                                                  )}
+                                                  {order.status === OrderStatus.PROCESSED && (
+                                                      <button onClick={() => handleOrderStatus(order.id, OrderStatus.COMPLETED)} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs font-bold">Selesai</button>
+                                                  )}
+                                                  {order.paymentProof && (
+                                                      <a href={order.paymentProof} target="_blank" className="bg-white/10 hover:bg-white/20 text-gray-300 px-3 py-1 rounded text-xs font-bold border border-white/10">Lihat Bukti</a>
+                                                  )}
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              </div>
+          )}
+
           {/* TAB: MEMBERS */}
           {activeTab === 'members' && (
               <div className="animate-fade-in space-y-6">
@@ -635,7 +766,306 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* Include other tabs here (products, orders, coupons, logs, reports, feedback) with updated padding p-8 and gap-6 similar to above */}
+          {/* TAB: PRODUCTS */}
+          {activeTab === 'products' && (
+              <div className="animate-fade-in flex flex-col xl:flex-row gap-8">
+                  {/* FORM INPUT PRODUCT */}
+                  <div className="xl:w-1/3 xl:order-2">
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6 sticky top-4 shadow-xl">
+                          <h3 className="text-xl font-bold text-white mb-4">Input Produk Official</h3>
+                          <div className="space-y-4">
+                              <input placeholder="Nama Produk" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newProduct.name || ''} onChange={e => setNewProduct({...newProduct, name: e.target.value})}/>
+                              <div className="grid grid-cols-2 gap-4">
+                                  <input placeholder="Harga (Rp)" type="number" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})}/>
+                                  <select className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newProduct.type} onChange={e => setNewProduct({...newProduct, type: e.target.value as ProductType})}>
+                                      <option value="ITEM">Digital Item</option>
+                                      <option value="SKIN">Gift Skin</option>
+                                      <option value="JOKI">Jasa Joki</option>
+                                      <option value="REKBER">Rekber</option>
+                                      <option value="VOUCHER">Voucher</option>
+                                      <option value="OTHER">Lainnya</option>
+                                  </select>
+                              </div>
+                              <div className="relative group">
+                                  <input type="file" onChange={handleProductImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" />
+                                  <div className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white flex items-center gap-3">
+                                      <Upload size={18} className="text-gray-400"/>
+                                      <span className="text-sm text-gray-400 truncate">{newProduct.image ? 'Gambar Terupload' : 'Upload Gambar'}</span>
+                                  </div>
+                                  {isUploading && <Loader2 className="animate-spin absolute right-4 top-3 text-white"/>}
+                              </div>
+                              <textarea placeholder="Deskripsi Produk" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white h-24 focus:border-brand-500 outline-none" value={newProduct.description || ''} onChange={e => setNewProduct({...newProduct, description: e.target.value})}/>
+                              <button onClick={handleAddProduct} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus className="inline mr-2"/>Simpan Produk</button>
+                          </div>
+                      </div>
+                  </div>
+                  
+                  {/* PRODUCT LIST */}
+                  <div className="flex-1 xl:order-1">
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                          <h3 className="text-xl font-bold text-white mb-6">List Produk Official</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {products.map(p => (
+                                  <div key={p.id} className="bg-dark-bg/50 border border-white/5 p-4 rounded-2xl flex items-center gap-4 group hover:border-brand-500/30 transition-all">
+                                      <img src={p.image || "https://picsum.photos/100"} className="w-16 h-16 rounded-xl object-cover"/>
+                                      <div className="flex-1 min-w-0">
+                                          <h4 className="text-white font-bold text-sm truncate">{p.name}</h4>
+                                          <p className="text-brand-400 font-bold text-xs">Rp {p.price.toLocaleString()}</p>
+                                          {p.isFlashSale && <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold">FLASH SALE</span>}
+                                      </div>
+                                      <div className="flex flex-col gap-1">
+                                          <button onClick={() => handleToggleFlashSale(p)} className={`p-1.5 rounded-lg ${p.isFlashSale ? 'bg-yellow-500 text-black' : 'bg-white/5 text-gray-400 hover:bg-yellow-500 hover:text-black'}`} title="Toggle Flash Sale">
+                                              <Zap size={14}/>
+                                          </button>
+                                          <button onClick={(e) => handleDeleteProduct(e, p.id)} className="p-1.5 bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-all rounded-lg z-10"><Trash2 size={14}/></button>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* TAB: STORES */}
+          {activeTab === 'stores' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                      <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-xl font-bold text-white flex items-center gap-2"><Store size={24}/> Manajemen Toko Seller</h3>
+                          
+                          {/* Manual Level Tool */}
+                          <div className="flex gap-2 bg-black/30 p-2 rounded-xl border border-white/5">
+                              <select className="bg-dark-bg border border-white/10 rounded px-2 py-1 text-white text-xs w-32" onChange={e => setManualExpId(e.target.value)} value={manualExpId || ''}>
+                                  <option value="">Pilih Seller...</option>
+                                  {sellers.map(s => <option key={s.id} value={s.id}>{s.storeName}</option>)}
+                              </select>
+                              <input type="number" placeholder="EXP" className="bg-dark-bg border border-white/10 rounded px-2 py-1 text-white text-xs w-16" value={manualExpVal} onChange={e=>setManualExpVal(e.target.value)}/>
+                              <input type="number" placeholder="LVL" className="bg-dark-bg border border-white/10 rounded px-2 py-1 text-white text-xs w-12" value={manualLevelVal} onChange={e=>setManualLevelVal(e.target.value)}/>
+                              <button onClick={handleUpdateStoreLevel} className="bg-brand-600 px-3 py-1 rounded text-xs text-white font-bold">Set</button>
+                          </div>
+                      </div>
+
+                      <div className="space-y-4">
+                          {sellers.length === 0 ? <p className="text-gray-500 text-center py-8">Belum ada seller terdaftar.</p> : null}
+                          {sellers.map(seller => (
+                              <div key={seller.id} className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                  <div className="flex justify-between items-start mb-4">
+                                      <div className="flex items-center gap-3">
+                                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center font-bold text-white text-xl">
+                                              {seller.storeName?.charAt(0)}
+                                          </div>
+                                          <div>
+                                              <h4 className="font-bold text-white flex items-center gap-2">
+                                                  {seller.storeName}
+                                                  <span className={`px-2 py-0.5 rounded text-[10px] ${seller.storeStatus === 'ACTIVE' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>{seller.storeStatus}</span>
+                                              </h4>
+                                              <p className="text-xs text-gray-400">Owner: {seller.username} (Lvl {seller.storeLevel})</p>
+                                          </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                          <button onClick={() => handleViewStoreProducts(seller.id)} className="bg-blue-600/20 text-blue-400 px-3 py-1 rounded text-xs font-bold hover:bg-blue-600 hover:text-white transition-all">Lihat Produk</button>
+                                          {seller.storeStatus === 'PENDING' && <button onClick={() => handleStoreAction(seller.id, 'VERIFY')} className="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold">Terima</button>}
+                                          {seller.storeStatus === 'ACTIVE' && <button onClick={() => handleStoreAction(seller.id, 'SUSPEND')} className="bg-yellow-600 text-white px-3 py-1 rounded text-xs font-bold">Suspend</button>}
+                                          <button onClick={() => handleStoreAction(seller.id, 'DELETE')} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold">Hapus</button>
+                                      </div>
+                                  </div>
+                                  
+                                  {viewingStoreId === seller.id && (
+                                      <div className="mt-4 pt-4 border-t border-white/5 animate-slide-up">
+                                          <h5 className="font-bold text-white text-sm mb-2">Produk Toko ({selectedStoreProducts.length})</h5>
+                                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                              {selectedStoreProducts.map(p => (
+                                                  <div key={p.id} className="bg-black/30 p-2 rounded-lg border border-white/5 relative group">
+                                                      <img src={p.image} className="w-full h-24 object-cover rounded mb-2 opacity-70 group-hover:opacity-100"/>
+                                                      <p className="text-white text-xs font-bold truncate">{p.name}</p>
+                                                      <p className="text-brand-400 text-xs">Rp {p.price.toLocaleString()}</p>
+                                                      <button onClick={() => handleToggleBoost(p)} className={`absolute top-2 right-2 p-1 rounded ${p.isBoosted ? 'bg-yellow-500 text-black' : 'bg-black/50 text-gray-400'}`} title="Boost"><Zap size={12}/></button>
+                                                      <button onClick={() => handleToggleFlashSale(p)} className={`absolute top-8 right-2 p-1 rounded ${p.isFlashSale ? 'bg-red-500 text-white' : 'bg-black/50 text-gray-400'}`} title="Flash Sale"><TrendingUp size={12}/></button>
+                                                  </div>
+                                              ))}
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* TAB: COUPONS */}
+          {activeTab === 'coupons' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                      <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-xl font-bold text-white flex items-center gap-2"><Ticket size={24}/> Promo & Kupon</h3>
+                      </div>
+                      
+                      {/* Create Coupon Form */}
+                      <div className="bg-black/20 p-4 rounded-2xl border border-white/5 mb-8">
+                          <h4 className="text-sm font-bold text-gray-300 mb-4">Buat Kupon Baru</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                              <input placeholder="Kode Kupon (ex: RAMADHAN)" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newCoupon.code || ''} onChange={e=>setNewCoupon({...newCoupon, code:e.target.value.toUpperCase()})}/>
+                              <input placeholder="Nama Promo" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newCoupon.name || ''} onChange={e=>setNewCoupon({...newCoupon, name:e.target.value})}/>
+                              <input type="number" placeholder="Nominal Diskon (Rp)" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newCoupon.discountAmount || ''} onChange={e=>setNewCoupon({...newCoupon, discountAmount:Number(e.target.value)})}/>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                              <input type="number" placeholder="Max Usage" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newCoupon.maxUsage || ''} onChange={e=>setNewCoupon({...newCoupon, maxUsage:Number(e.target.value)})}/>
+                              <input type="date" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={newCoupon.expiresAt || ''} onChange={e=>setNewCoupon({...newCoupon, expiresAt:e.target.value})}/>
+                              <div className="flex items-center gap-2 bg-dark-bg border border-white/10 rounded-xl px-3">
+                                  <input type="checkbox" checked={newCoupon.isPublic} onChange={e=>setNewCoupon({...newCoupon, isPublic:e.target.checked})}/>
+                                  <span className="text-sm text-gray-300">Publik?</span>
+                              </div>
+                              <button onClick={handleAddCoupon} className="bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg">Buat Kupon</button>
+                          </div>
+                      </div>
+
+                      {/* Coupon List */}
+                      <div className="space-y-4">
+                          {coupons.length === 0 ? <p className="text-gray-500 text-center py-8">Belum ada kupon.</p> : null}
+                          {coupons.map(coupon => (
+                              <div key={coupon.id} className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/5">
+                                  <div>
+                                      <div className="flex items-center gap-2">
+                                          <span className="text-xl font-black text-white">{coupon.code}</span>
+                                          <span className={`text-[10px] px-2 py-0.5 rounded ${coupon.isActive ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>{coupon.isActive ? 'ACTIVE' : 'INACTIVE'}</span>
+                                          {coupon.isPublic && <span className="text-[10px] bg-blue-500/20 text-blue-500 px-2 py-0.5 rounded">PUBLIC</span>}
+                                      </div>
+                                      <p className="text-sm text-gray-400">{coupon.name} • Potongan Rp {coupon.discountAmount.toLocaleString()}</p>
+                                      <p className="text-xs text-gray-500">Terpakai: {coupon.currentUsage || 0} / {coupon.maxUsage || '∞'} • Exp: {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString() : 'Selamanya'}</p>
+                                  </div>
+                                  <button onClick={() => handleDeleteCoupon(coupon.id)} className="p-2 bg-white/10 hover:bg-red-500 text-gray-400 hover:text-white rounded-lg transition-colors"><Trash2 size={18}/></button>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* TAB: FEEDBACK */}
+          {activeTab === 'feedback' && (
+              <div className="animate-fade-in space-y-4">
+                  <h3 className="text-white font-bold text-xl mb-4 flex items-center gap-2"><MessageSquare size={24} className="text-brand-400"/> Kotak Saran & Kritik ({feedbacks.length})</h3>
+                  {feedbacks.length === 0 ? (
+                      <div className="text-center p-12 bg-dark-card rounded-2xl border border-white/5 text-gray-500">
+                          <p>Belum ada masukan dari publik.</p>
+                      </div>
+                  ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {feedbacks.map(f => (
+                              <div key={f.id} className="bg-dark-card border border-white/5 p-6 rounded-2xl relative group hover:border-brand-500/30 transition-all">
+                                  <div className="flex justify-between items-start mb-3">
+                                      <div>
+                                          <h4 className="text-white font-bold">{f.name}</h4>
+                                          <p className="text-xs text-gray-500">{new Date(f.createdAt).toLocaleString()}</p>
+                                      </div>
+                                      <button onClick={() => handleDeleteFeedback(f.id)} className="p-2 bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                                          <Trash2 size={16}/>
+                                      </button>
+                                  </div>
+                                  <div className="bg-white/5 p-4 rounded-xl text-gray-300 text-sm leading-relaxed border border-white/5">
+                                      "{f.message}"
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+              </div>
+          )}
+
+          {/* TAB: REPORTS */}
+          {activeTab === 'reports' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
+                      <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                          <h3 className="text-white font-bold flex items-center gap-2"><Flag size={20} className="text-red-500"/> Laporan Masuk ({reports.length})</h3>
+                      </div>
+                      <div className="p-4">
+                          {reports.length === 0 ? (
+                              <div className="text-center py-12 text-gray-500">Tidak ada laporan.</div>
+                          ) : (
+                              <div className="space-y-4">
+                                  {reports.map(rep => (
+                                      <div key={rep.id} className="bg-white/5 p-4 rounded-xl border border-white/5 flex flex-col md:flex-row gap-4 justify-between items-start">
+                                          <div>
+                                              <div className="flex items-center gap-2 mb-2">
+                                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                      rep.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'
+                                                  }`}>{rep.status}</span>
+                                                  <span className="text-xs text-gray-400">{new Date(rep.createdAt).toLocaleString()}</span>
+                                              </div>
+                                              <h4 className="text-white font-bold text-sm">Target: {rep.targetId} ({rep.targetType})</h4>
+                                              <p className="text-gray-400 text-xs">Alasan: {rep.reason}</p>
+                                              <p className="text-gray-300 text-sm mt-2 p-2 bg-black/20 rounded">"{rep.description}"</p>
+                                          </div>
+                                          <button onClick={() => handleDeleteReport(rep.id)} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-all self-end md:self-start">
+                                              Hapus Laporan
+                                          </button>
+                                      </div>
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* TAB: LOGS */}
+          {activeTab === 'logs' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden p-6">
+                      <h3 className="text-white font-bold flex items-center gap-2 mb-6"><FileText size={20} className="text-brand-400"/> Log Aktivitas Harian</h3>
+                      
+                      {Object.keys(groupedLogs).length === 0 ? (
+                          <div className="text-center py-12 text-gray-500">Belum ada aktivitas tercatat.</div>
+                      ) : (
+                          <div className="space-y-4">
+                              {Object.entries(groupedLogs).map(([date, uncastedLogs]) => {
+                                  const dayLogs = uncastedLogs as ActivityLog[];
+                                  return (
+                                  <div key={date} className="border border-white/5 rounded-xl overflow-hidden">
+                                      {/* Header Date Group */}
+                                      <button 
+                                          onClick={() => toggleLogDate(date)}
+                                          className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 transition-colors"
+                                      >
+                                          <div className="flex items-center gap-3">
+                                              <Calendar size={18} className="text-brand-400"/>
+                                              <span className="text-white font-bold text-sm">{date}</span>
+                                              <span className="bg-black/30 px-2 py-0.5 rounded text-[10px] text-gray-400">{dayLogs.length} Aktivitas</span>
+                                          </div>
+                                          {expandedLogDates.includes(date) ? <ChevronDown size={18} className="text-gray-400"/> : <ChevronRight size={18} className="text-gray-400"/>}
+                                      </button>
+
+                                      {/* Log Items */}
+                                      {expandedLogDates.includes(date) && (
+                                          <div className="bg-black/20 divide-y divide-white/5">
+                                              {dayLogs.map(log => (
+                                                  <div key={log.id} className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-2 hover:bg-white/5 transition-colors">
+                                                      <div className="flex items-center gap-3">
+                                                          <div className="text-[10px] text-gray-500 font-mono min-w-[60px]">
+                                                              {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                          </div>
+                                                          <div>
+                                                              <div className="flex items-center gap-2">
+                                                                  <span className="text-brand-400 font-bold text-xs">{log.username}</span>
+                                                                  <span className="text-[10px] bg-white/10 px-1.5 rounded text-gray-400 uppercase">{log.action}</span>
+                                                              </div>
+                                                              <p className="text-gray-300 text-xs mt-0.5">{log.details}</p>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              ))}
+                                          </div>
+                                      )}
+                                  </div>
+                              )})}
+                          </div>
+                      )}
+                  </div>
+              </div>
+          )}
           
           </div>
       </main>

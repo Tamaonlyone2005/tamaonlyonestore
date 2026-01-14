@@ -1,5 +1,4 @@
-
-import { VipLevel } from './types';
+import { VipLevel, SiteProfile } from './types';
 
 export const ADMIN_ID = "1401062606050004";
 export const ADMIN_PASS = "260605";
@@ -19,7 +18,7 @@ export const PAYMENT_CONFIG = {
   accountHolder: "TAMA ONLY ONE"
 };
 
-export const DEFAULT_PROFILE = {
+export const DEFAULT_PROFILE: SiteProfile = {
   name: "Tamaonlyone Store",
   description: "Pusat Top Up Game, Voucher, dan Produk Digital Terpercaya. Proses cepat, aman, dan harga bersahabat.",
   avatar: "https://picsum.photos/200",
@@ -43,6 +42,12 @@ export const DEFAULT_PROFILE = {
       botName: "TamaBot 🤖",
       badWords: ["kasar", "anjing", "babi", "scam", "penipu"],
       autoReplyMessage: "Halo! Admin sedang tidak aktif saat ini. Mohon tinggalkan pesan, kami akan segera kembali. 🙏"
+  },
+  digiFlazzConfig: {
+      username: "",
+      apiKey: "",
+      mode: "development",
+      isActive: false
   }
 };
 

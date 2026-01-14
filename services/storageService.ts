@@ -648,6 +648,16 @@ export const StorageService = {
   getServiceRequests: async (): Promise<ServiceRequest[]> => {
       return await getCollection<ServiceRequest>('service_requests');
   },
+  
+  updateServiceRequestStatus: async (reqId: string, status: string) => {
+      if(isRemoteEnabled && db) {
+          try {
+              const ref = doc(db, 'service_requests', reqId);
+              await updateDoc(ref, { status });
+          } catch(e) { handleRemoteError(e); }
+      }
+      await StorageService.logActivity(ADMIN_ID, "Administrator", "SERVICE_UPDATE", `Mengubah status Service Request ${reqId} menjadi ${status}`);
+  },
 
   createReport: async (report: Report) => { await setDocument('reports', report.id, report); },
   getReports: async (): Promise<Report[]> => getCollection<Report>('reports'),
