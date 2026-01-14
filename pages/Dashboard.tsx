@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
 import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive, Feedback } from '../types';
-import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 
@@ -48,6 +48,10 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const [archives, setArchives] = useState<Archive[]>([]);
   const [siteProfile, setSiteProfile] = useState<SiteProfile | null>(null);
   
+  // Log Grouping State
+  const [groupedLogs, setGroupedLogs] = useState<{[key: string]: ActivityLog[]}>({});
+  const [expandedLogDates, setExpandedLogDates] = useState<string[]>([]);
+
   // Form States
   const [newProduct, setNewProduct] = useState<Partial<Product>>({ type: 'ITEM' });
   const [searchTerm, setSearchTerm] = useState('');
@@ -115,7 +119,11 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
         const onlyMembers = allUsers.filter(u => u.role !== UserRole.ADMIN);
         setMembers(onlyMembers);
         setSellers(onlyMembers.filter(u => u.isSeller));
+        
+        // Logs Processing
         setLogs(l);
+        groupLogsByDate(l);
+
         setCoupons(c);
         setReports(rep);
         setFeedbacks(feed);
@@ -123,9 +131,29 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
         setArchives(arch);
         setStats(prev => ({ ...prev, totalMembers: onlyMembers.length }));
     } catch (err) {
-        console.error(err);
+        console.error("Dashboard Load Error:", err);
         addToast("Gagal memuat beberapa data dashboard.", "error");
     }
+  };
+  
+  const groupLogsByDate = (logData: ActivityLog[]) => {
+      const grouped: {[key: string]: ActivityLog[]} = {};
+      logData.forEach(log => {
+          const dateKey = new Date(log.timestamp).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          if(!grouped[dateKey]) grouped[dateKey] = [];
+          grouped[dateKey].push(log);
+      });
+      setGroupedLogs(grouped);
+      // Auto expand first date
+      if(Object.keys(grouped).length > 0) setExpandedLogDates([Object.keys(grouped)[0]]);
+  };
+
+  const toggleLogDate = (date: string) => {
+      if (expandedLogDates.includes(date)) {
+          setExpandedLogDates(prev => prev.filter(d => d !== date));
+      } else {
+          setExpandedLogDates(prev => [...prev, date]);
+      }
   };
   
   const refreshData = async () => {
@@ -473,7 +501,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
           
-          {/* TAB: FEEDBACK (NEW) */}
+          {/* TAB: FEEDBACK */}
           {activeTab === 'feedback' && (
               <div className="animate-fade-in space-y-4">
                   <h3 className="text-white font-bold text-xl mb-4 flex items-center gap-2"><MessageSquare size={24} className="text-brand-400"/> Kotak Saran & Kritik ({feedbacks.length})</h3>
@@ -507,7 +535,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
           {/* TAB: PRODUCTS */}
           {activeTab === 'products' && (
               <div className="animate-fade-in flex flex-col xl:flex-row gap-8">
-                  {/* FORM INPUT PRODUCT (RIGHT PANEL in large screens, top in mobile) */}
+                  {/* FORM INPUT PRODUCT */}
                   <div className="xl:w-1/3 xl:order-2">
                       <div className="bg-dark-card border border-white/5 rounded-3xl p-6 sticky top-4 shadow-xl">
                           <h3 className="text-xl font-bold text-white mb-4">Input Produk Official</h3>
@@ -560,96 +588,98 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* ... (Rest of the tabs: coupons, orders, members, stores, reports, logs, settings... Kept identical) ... */}
-          {/* TAB: COUPONS & PROMO */}
-          {activeTab === 'coupons' && (
-              <div className="animate-fade-in flex flex-col xl:flex-row gap-8">
-                  {/* CREATE COUPON FORM (Right Side) */}
-                  <div className="xl:w-1/3 xl:order-2">
-                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6 sticky top-4 shadow-xl">
-                          <h3 className="text-xl font-bold text-white mb-6">Buat Kupon Baru</h3>
-                          <div className="space-y-4">
-                              <div>
-                                  <label className="text-xs text-gray-400 mb-1 block">Kode Kupon</label>
-                                  <input placeholder="Contoh: MERDEKA" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newCoupon.code || ''} onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})}/>
-                              </div>
-                              <div>
-                                  <label className="text-xs text-gray-400 mb-1 block">Nominal Diskon (Rp)</label>
-                                  <input placeholder="0" type="number" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newCoupon.discountAmount || ''} onChange={e => setNewCoupon({...newCoupon, discountAmount: Number(e.target.value)})}/>
-                              </div>
-                              
-                              {/* New Fields */}
-                              <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                      <label className="text-xs text-gray-400 mb-1 block">Batas Pakai (Kali)</label>
-                                      <input type="number" placeholder="Unlimited" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" value={newCoupon.maxUsage || ''} onChange={e => setNewCoupon({...newCoupon, maxUsage: Number(e.target.value)})}/>
-                                  </div>
-                                  <div>
-                                      <label className="text-xs text-gray-400 mb-1 block">Kadaluarsa</label>
-                                      <input type="date" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" value={newCoupon.expiresAt || ''} onChange={e => setNewCoupon({...newCoupon, expiresAt: e.target.value})}/>
-                                  </div>
-                              </div>
-                              
-                              <div>
-                                  <label className="text-xs text-gray-400 mb-1 block">ID Produk Khusus (Opsional)</label>
-                                  <input placeholder="Produk ID" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" 
-                                    value={newCoupon.validProductIds?.[0] || ''} 
-                                    onChange={e => setNewCoupon({...newCoupon, validProductIds: e.target.value ? [e.target.value] : []})}
-                                  />
-                                  <p className="text-[10px] text-gray-500 mt-1">*Kosongkan untuk berlaku semua produk Admin.</p>
-                              </div>
-
-                              <button onClick={handleAddCoupon} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus size={18}/> Buat Kupon</button>
-                          </div>
+          {/* TAB: REPORTS */}
+          {activeTab === 'reports' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
+                      <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                          <h3 className="text-white font-bold flex items-center gap-2"><Flag size={20} className="text-red-500"/> Laporan Masuk ({reports.length})</h3>
                       </div>
-                  </div>
-
-                  {/* COUPON LIST (Left Side) */}
-                  <div className="flex-1 xl:order-1 space-y-8">
-                      {/* POINTS MANAGER */}
-                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
-                          <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Coins className="text-yellow-500"/> Kelola Poin Member</h3>
-                          <div className="flex flex-col md:flex-row gap-4 items-end">
-                              <div className="flex-1 w-full">
-                                  <label className="block text-xs text-gray-400 mb-1">UID Member (Copy dari Daftar Member)</label>
-                                  <input placeholder="Tempel UID disini..." className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointUid} onChange={e => setPointUid(e.target.value)}/>
-                              </div>
-                              <div className="flex-1 w-full">
-                                  <label className="block text-xs text-gray-400 mb-1">Jumlah Poin</label>
-                                  <input type="number" placeholder="0" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointAmount} onChange={e => setPointAmount(e.target.value)}/>
-                              </div>
-                              <button onClick={() => handleManagePointsByUID('ADD')} className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold">Tambah</button>
-                              <button onClick={() => handleManagePointsByUID('SUBTRACT')} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold">Tarik</button>
-                          </div>
-                      </div>
-
-                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
-                          <h3 className="text-white font-bold mb-4">Daftar Kupon Aktif</h3>
-                          <div className="space-y-4">
-                              {coupons.length === 0 && <p className="text-gray-500 text-center">Belum ada kupon.</p>}
-                              {coupons.map(c => (
-                                  <div key={c.id} className="bg-dark-bg/50 border border-white/5 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
-                                      <div>
-                                          <div className="flex items-center gap-3">
-                                              <h4 className="text-white font-bold text-lg tracking-wider bg-white/10 px-3 py-1 rounded-lg font-mono">{c.code}</h4>
-                                              <span className="text-green-400 font-bold">Rp {c.discountAmount.toLocaleString()}</span>
+                      <div className="p-4">
+                          {reports.length === 0 ? (
+                              <div className="text-center py-12 text-gray-500">Tidak ada laporan.</div>
+                          ) : (
+                              <div className="space-y-4">
+                                  {reports.map(rep => (
+                                      <div key={rep.id} className="bg-white/5 p-4 rounded-xl border border-white/5 flex flex-col md:flex-row gap-4 justify-between items-start">
+                                          <div>
+                                              <div className="flex items-center gap-2 mb-2">
+                                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                      rep.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'
+                                                  }`}>{rep.status}</span>
+                                                  <span className="text-xs text-gray-400">{new Date(rep.createdAt).toLocaleString()}</span>
+                                              </div>
+                                              <h4 className="text-white font-bold text-sm">Target: {rep.targetId} ({rep.targetType})</h4>
+                                              <p className="text-gray-400 text-xs">Alasan: {rep.reason}</p>
+                                              <p className="text-gray-300 text-sm mt-2 p-2 bg-black/20 rounded">"{rep.description}"</p>
                                           </div>
-                                          <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
-                                              <span className="flex items-center gap-1"><Users size={12}/> {c.currentUsage || 0} / {c.maxUsage || '∞'} Used</span>
-                                              {c.expiresAt && <span className="flex items-center gap-1"><Calendar size={12}/> Exp: {new Date(c.expiresAt).toLocaleDateString()}</span>}
-                                              {c.validProductIds && c.validProductIds.length > 0 && <span className="flex items-center gap-1"><List size={12}/> Specific Product</span>}
-                                          </div>
+                                          <button onClick={() => handleDeleteReport(rep.id)} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-all self-end md:self-start">
+                                              Hapus Laporan
+                                          </button>
                                       </div>
-                                      <button onClick={() => handleDeleteCoupon(c.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={18}/></button>
-                                  </div>
-                              ))}
-                          </div>
+                                  ))}
+                              </div>
+                          )}
                       </div>
                   </div>
               </div>
           )}
 
-          {/* ... (Orders, Members, Stores, Reports, Logs, Settings tabs are fine and unchanged) ... */}
+          {/* TAB: LOGS (GROUPED BY DATE) */}
+          {activeTab === 'logs' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden p-6">
+                      <h3 className="text-white font-bold flex items-center gap-2 mb-6"><FileText size={20} className="text-brand-400"/> Log Aktivitas Harian</h3>
+                      
+                      {Object.keys(groupedLogs).length === 0 ? (
+                          <div className="text-center py-12 text-gray-500">Belum ada aktivitas tercatat.</div>
+                      ) : (
+                          <div className="space-y-4">
+                              {Object.entries(groupedLogs).map(([date, dayLogs]) => (
+                                  <div key={date} className="border border-white/5 rounded-xl overflow-hidden">
+                                      {/* Header Date Group */}
+                                      <button 
+                                          onClick={() => toggleLogDate(date)}
+                                          className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 transition-colors"
+                                      >
+                                          <div className="flex items-center gap-3">
+                                              <Calendar size={18} className="text-brand-400"/>
+                                              <span className="text-white font-bold text-sm">{date}</span>
+                                              <span className="bg-black/30 px-2 py-0.5 rounded text-[10px] text-gray-400">{dayLogs.length} Aktivitas</span>
+                                          </div>
+                                          {expandedLogDates.includes(date) ? <ChevronDown size={18} className="text-gray-400"/> : <ChevronRight size={18} className="text-gray-400"/>}
+                                      </button>
+
+                                      {/* Log Items */}
+                                      {expandedLogDates.includes(date) && (
+                                          <div className="bg-black/20 divide-y divide-white/5">
+                                              {dayLogs.map(log => (
+                                                  <div key={log.id} className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-2 hover:bg-white/5 transition-colors">
+                                                      <div className="flex items-center gap-3">
+                                                          <div className="text-[10px] text-gray-500 font-mono min-w-[60px]">
+                                                              {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                          </div>
+                                                          <div>
+                                                              <div className="flex items-center gap-2">
+                                                                  <span className="text-brand-400 font-bold text-xs">{log.username}</span>
+                                                                  <span className="text-[10px] bg-white/10 px-1.5 rounded text-gray-400 uppercase">{log.action}</span>
+                                                              </div>
+                                                              <p className="text-gray-300 text-xs mt-0.5">{log.details}</p>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              ))}
+                                          </div>
+                                      )}
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              </div>
+          )}
+
+          {/* ... (Existing tabs logic for others) ... */}
           {/* TAB: ORDERS */}
           {activeTab === 'orders' && (
               <div className="animate-fade-in space-y-6">
@@ -693,7 +723,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: MEMBERS, STORES, REPORTS, LOGS, SETTINGS - Kept as is */}
+          {/* TAB: MEMBERS */}
           {activeTab === 'members' && (
               <div className="animate-fade-in space-y-6">
                   <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
@@ -911,6 +941,94 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                      </div>
                 </div>
             </div>
+          )}
+
+          {/* TAB: COUPONS & PROMO */}
+          {activeTab === 'coupons' && (
+              <div className="animate-fade-in flex flex-col xl:flex-row gap-8">
+                  {/* CREATE COUPON FORM (Right Side) */}
+                  <div className="xl:w-1/3 xl:order-2">
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6 sticky top-4 shadow-xl">
+                          <h3 className="text-xl font-bold text-white mb-6">Buat Kupon Baru</h3>
+                          <div className="space-y-4">
+                              <div>
+                                  <label className="text-xs text-gray-400 mb-1 block">Kode Kupon</label>
+                                  <input placeholder="Contoh: MERDEKA" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newCoupon.code || ''} onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})}/>
+                              </div>
+                              <div>
+                                  <label className="text-xs text-gray-400 mb-1 block">Nominal Diskon (Rp)</label>
+                                  <input placeholder="0" type="number" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newCoupon.discountAmount || ''} onChange={e => setNewCoupon({...newCoupon, discountAmount: Number(e.target.value)})}/>
+                              </div>
+                              
+                              {/* New Fields */}
+                              <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                      <label className="text-xs text-gray-400 mb-1 block">Batas Pakai (Kali)</label>
+                                      <input type="number" placeholder="Unlimited" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" value={newCoupon.maxUsage || ''} onChange={e => setNewCoupon({...newCoupon, maxUsage: Number(e.target.value)})}/>
+                                  </div>
+                                  <div>
+                                      <label className="text-xs text-gray-400 mb-1 block">Kadaluarsa</label>
+                                      <input type="date" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" value={newCoupon.expiresAt || ''} onChange={e => setNewCoupon({...newCoupon, expiresAt: e.target.value})}/>
+                                  </div>
+                              </div>
+                              
+                              <div>
+                                  <label className="text-xs text-gray-400 mb-1 block">ID Produk Khusus (Opsional)</label>
+                                  <input placeholder="Produk ID" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-xs" 
+                                    value={newCoupon.validProductIds?.[0] || ''} 
+                                    onChange={e => setNewCoupon({...newCoupon, validProductIds: e.target.value ? [e.target.value] : []})}
+                                  />
+                                  <p className="text-[10px] text-gray-500 mt-1">*Kosongkan untuk berlaku semua produk Admin.</p>
+                              </div>
+
+                              <button onClick={handleAddCoupon} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus size={18}/> Buat Kupon</button>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* COUPON LIST (Left Side) */}
+                  <div className="flex-1 xl:order-1 space-y-8">
+                      {/* POINTS MANAGER */}
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                          <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Coins className="text-yellow-500"/> Kelola Poin Member</h3>
+                          <div className="flex flex-col md:flex-row gap-4 items-end">
+                              <div className="flex-1 w-full">
+                                  <label className="block text-xs text-gray-400 mb-1">UID Member (Copy dari Daftar Member)</label>
+                                  <input placeholder="Tempel UID disini..." className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointUid} onChange={e => setPointUid(e.target.value)}/>
+                              </div>
+                              <div className="flex-1 w-full">
+                                  <label className="block text-xs text-gray-400 mb-1">Jumlah Poin</label>
+                                  <input type="number" placeholder="0" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" value={pointAmount} onChange={e => setPointAmount(e.target.value)}/>
+                              </div>
+                              <button onClick={() => handleManagePointsByUID('ADD')} className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold">Tambah</button>
+                              <button onClick={() => handleManagePointsByUID('SUBTRACT')} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold">Tarik</button>
+                          </div>
+                      </div>
+
+                      <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
+                          <h3 className="text-white font-bold mb-4">Daftar Kupon Aktif</h3>
+                          <div className="space-y-4">
+                              {(coupons as Coupon[]).length === 0 && <p className="text-gray-500 text-center">Belum ada kupon.</p>}
+                              {(coupons as Coupon[]).map(c => (
+                                  <div key={c.id} className="bg-dark-bg/50 border border-white/5 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+                                      <div>
+                                          <div className="flex items-center gap-3">
+                                              <h4 className="text-white font-bold text-lg tracking-wider bg-white/10 px-3 py-1 rounded-lg font-mono">{c.code}</h4>
+                                              <span className="text-green-400 font-bold">Rp {c.discountAmount.toLocaleString()}</span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
+                                              <span className="flex items-center gap-1"><Users size={12}/> {c.currentUsage || 0} / {c.maxUsage || '∞'} Used</span>
+                                              {c.expiresAt && <span className="flex items-center gap-1"><Calendar size={12}/> Exp: {new Date(c.expiresAt).toLocaleDateString()}</span>}
+                                              {c.validProductIds && c.validProductIds.length > 0 && <span className="flex items-center gap-1"><List size={12}/> Specific Product</span>}
+                                          </div>
+                                      </div>
+                                      <button onClick={() => handleDeleteCoupon(c.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={18}/></button>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+              </div>
           )}
 
           </div>

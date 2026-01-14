@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus, Order } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Bell, ShoppingCart, Shield, Store, Search, Home, Gamepad2, Users, ShoppingBag, Moon } from 'lucide-react';
+import { Bell, ShoppingCart, Shield, Store, Search, Home, Gamepad2, Users, ShoppingBag, Moon, Zap, Star } from 'lucide-react';
 import { COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
@@ -137,8 +137,36 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-dark-bg text-white font-sans">
+    <div className="min-h-screen flex flex-col bg-transparent text-white font-sans selection:bg-brand-500 selection:text-white">
       
+      {/* ================= RAMADAN DECORATION (Desktop) ================= */}
+      <div className="fixed top-0 left-0 right-0 z-[60] pointer-events-none hidden md:block">
+          {/* Lampion Kiri */}
+          <div className="absolute top-0 left-10 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '4s'}}>
+              <div className="w-0.5 h-16 bg-gold-500/50"></div>
+              <div className="w-8 h-10 bg-gradient-to-b from-brand-600 to-brand-800 rounded-lg border border-gold-500 shadow-lg shadow-gold-500/50 relative flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-30"></div>
+                  <div className="w-2 h-2 bg-yellow-200 rounded-full blur-[2px] animate-pulse"></div>
+              </div>
+              <div className="w-0.5 h-4 bg-gold-500"></div>
+          </div>
+          
+          {/* Ketupat/Star Tengah */}
+          <div className="absolute top-0 left-1/3 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '5s', animationDelay: '1s'}}>
+              <div className="w-0.5 h-24 bg-gold-500/30"></div>
+              <Star className="text-gold-400 fill-gold-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]" size={24}/>
+          </div>
+
+          {/* Lampion Kanan */}
+          <div className="absolute top-0 right-10 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '4.5s', animationDelay: '0.5s'}}>
+              <div className="w-0.5 h-20 bg-gold-500/50"></div>
+              <div className="w-10 h-12 bg-gradient-to-b from-brand-600 to-brand-800 rounded-full border border-gold-500 shadow-lg shadow-gold-500/50 relative flex items-center justify-center">
+                   <div className="w-2 h-2 bg-yellow-200 rounded-full blur-[2px] animate-pulse"></div>
+              </div>
+              <div className="w-0.5 h-4 bg-gold-500"></div>
+          </div>
+      </div>
+
       {/* ================= DESKTOP NAVIGATION ================= */}
       <nav className={`hidden md:block sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-dark-card/90 backdrop-blur-md border-b border-white/5 shadow-lg' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6">
@@ -149,7 +177,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                     {siteLogo ? (
                         <img src={siteLogo} alt="Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform"/>
                     ) : (
-                        <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20">
+                        <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20 border border-gold-500/30">
                             {siteName.charAt(0)}
                         </div>
                     )}
@@ -157,27 +185,22 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                         {renderLogoText(siteName)}
                     </span>
                 </Link>
-                {/* Ramadan Decoration: Small hanging moon/star */}
-                <div className="absolute -top-4 left-10 text-gold-400 animate-float opacity-80 pointer-events-none">
-                    <Moon size={16} fill="currentColor" />
-                </div>
             </div>
 
             {/* 2. Center: Navigation Links (Flex-1 to take space and center) */}
             <div className="flex-1 flex justify-center">
-                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/5">
-                    <Link to="/" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-brand-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                <div className="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-sm">
+                    <Link to="/" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/40' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                       <Home size={16} /> Home
                     </Link>
-                    <Link to="/sellers" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/sellers') ? 'bg-brand-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                    <Link to="/sellers" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/sellers') ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/40' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                       <Store size={16} /> Seller
                     </Link>
-                    <Link to="/shop" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/shop') ? 'bg-brand-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                    <Link to="/shop" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/shop') ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/40' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                       <ShoppingBag size={16} /> Produk
                     </Link>
-                    {/* Event Link Removed Here */}
                     {user && !isAdmin && (
-                       <Link to="/community" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-brand-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                       <Link to="/community" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/community') ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/40' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                          <Users size={16} /> Komunitas
                        </Link>
                     )}
@@ -205,7 +228,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                     <div className="h-8 w-[1px] bg-white/10 mx-1"></div>
 
                     <div className="flex items-center gap-3 cursor-pointer p-1 pr-3 rounded-full hover:bg-white/5 transition-all border border-transparent hover:border-white/5" onClick={() => navigate('/profile')}>
-                      <img src={user.avatar || "https://picsum.photos/32/32"} alt="Profile" className="w-9 h-9 rounded-full border border-white/10 object-cover"/>
+                      <img src={user.avatar || "https://picsum.photos/32/32"} alt="Profile" className="w-9 h-9 rounded-full border-2 border-brand-500/30 object-cover"/>
                       <div className="hidden xl:block leading-tight">
                           <p className="text-sm font-bold text-white max-w-[100px] truncate">{user.username}</p>
                           <p className="text-[10px] text-brand-400 font-mono">{isAdmin ? 'ADMIN' : `IDR ${user.points.toLocaleString()}`}</p>
@@ -223,7 +246,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
       </nav>
 
       {/* ================= MOBILE HEADER ================= */}
-      <div className={`md:hidden sticky top-0 z-40 transition-all duration-300 ${scrolled ? 'bg-dark-card/95 backdrop-blur-md border-b border-white/5 shadow-lg' : 'bg-dark-bg pt-2'}`}>
+      <div className={`md:hidden sticky top-0 z-40 transition-all duration-300 ${scrolled ? 'bg-dark-card/95 backdrop-blur-md border-b border-white/5 shadow-lg' : 'bg-transparent pt-2'}`}>
           <div className="px-4 py-3 flex items-center justify-between">
               {/* Left: User Profile (Moved here so it's first) */}
               <div className="flex items-center gap-3">
@@ -240,7 +263,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                            {siteLogo ? (
                               <img src={siteLogo} className="w-9 h-9 rounded-xl object-cover shadow-lg"/>
                           ) : (
-                              <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg">{siteName.charAt(0)}</div>
+                              <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg border border-gold-500/30">{siteName.charAt(0)}</div>
                           )}
                           <span className="font-extrabold text-lg text-white tracking-tight">{renderLogoText(siteName)}</span>
                       </div>
@@ -249,13 +272,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
 
               {/* Right: Actions */}
               <div className="flex items-center gap-2">
-                  <button onClick={() => navigate('/shop')} className="p-2.5 bg-white/5 rounded-full text-gray-300 hover:text-white border border-white/5">
+                  <button onClick={() => navigate('/shop')} className="p-2.5 bg-black/20 rounded-full text-gray-300 hover:text-white border border-white/5 backdrop-blur-sm">
                       <Search size={18}/>
                   </button>
 
                   {user ? (
                       <>
-                          <Link to="/cart" className="p-2.5 bg-white/5 rounded-full text-gray-300 hover:text-white relative border border-white/5">
+                          <Link to="/cart" className="p-2.5 bg-black/20 rounded-full text-gray-300 hover:text-white relative border border-white/5 backdrop-blur-sm">
                               <ShoppingCart size={18}/>
                               {cartCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-600 rounded-full text-[9px] flex items-center justify-center text-white border-2 border-[#0f172a]">{cartCount}</span>}
                           </Link>
@@ -286,7 +309,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
           {/* Brand Column */}
           <div className="col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white">{siteName.charAt(0)}</div>
+                  <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white border border-gold-500/30">{siteName.charAt(0)}</div>
                   <span className="font-bold text-xl text-white">{renderLogoText(siteName)}</span>
               </div>
               <p className="text-gray-500 text-sm leading-relaxed mb-6">Platform top up game dan produk digital terpercaya dengan proses otomatis 24 jam. Spesial Ramadhan 2026.</p>
