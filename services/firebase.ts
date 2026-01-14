@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, Firestore } from "firebase/firestore";
+import { getFirestore, Firestore, initializeFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
@@ -24,7 +24,13 @@ let initializationSuccessful = false;
 try {
   // Initialize Firebase
   app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
+  
+  // Use initializeFirestore with experimentalForceLongPolling to avoid connection timeouts
+  // and 'client is offline' errors in restrictive network environments.
+  db = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+  });
+  
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();
   
