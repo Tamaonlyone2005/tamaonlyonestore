@@ -42,12 +42,6 @@ export const DEFAULT_PROFILE: SiteProfile = {
       botName: "TamaBot 🤖",
       badWords: ["kasar", "anjing", "babi", "scam", "penipu"],
       autoReplyMessage: "Halo! Admin sedang tidak aktif saat ini. Mohon tinggalkan pesan, kami akan segera kembali. 🙏"
-  },
-  digiFlazzConfig: {
-      username: "",
-      apiKey: "",
-      mode: "development",
-      isActive: false
   }
 };
 

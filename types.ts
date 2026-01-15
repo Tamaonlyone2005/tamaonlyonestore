@@ -142,13 +142,6 @@ export interface BotConfig {
   autoReplyMessage: string;
 }
 
-export interface DigiFlazzConfig {
-    username: string;
-    apiKey: string;
-    mode: 'development' | 'production';
-    isActive: boolean;
-}
-
 export interface SiteProfile {
   name: string;
   description: string;
@@ -169,7 +162,6 @@ export interface SiteProfile {
     gold: number;
   };
   botConfig?: BotConfig;
-  digiFlazzConfig?: DigiFlazzConfig;
 }
 
 export interface AuthResponse {

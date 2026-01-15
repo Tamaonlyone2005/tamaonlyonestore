@@ -32,7 +32,7 @@ const DbStatRow = ({ label, count, icon: Icon }: { label: string, count: number,
 const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'members' | 'stores' | 'joki' | 'coupons' | 'logs' | 'reports' | 'feedback' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'members' | 'stores' | 'coupons' | 'logs' | 'reports' | 'feedback' | 'settings'>('overview');
   const [loading, setLoading] = useState(false);
   
   // Data States
@@ -46,7 +46,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const [reports, setReports] = useState<Report[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [archives, setArchives] = useState<Archive[]>([]);
-  const [jokiRequests, setJokiRequests] = useState<ServiceRequest[]>([]);
   const [siteProfile, setSiteProfile] = useState<SiteProfile | null>(null);
   
   // Log Grouping State
@@ -103,7 +102,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   const fetchStaticData = async () => {
     try {
-        const [p, allUsers, l, c, rep, feed, prof, arch, jokiReqs] = await Promise.all([
+        const [p, allUsers, l, c, rep, feed, prof, arch] = await Promise.all([
             StorageService.getProducts(),
             StorageService.getUsers(),
             StorageService.getLogs(),
@@ -111,8 +110,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             StorageService.getReports(),
             StorageService.getFeedbacks(),
             StorageService.getProfile(),
-            StorageService.getArchives(),
-            StorageService.getServiceRequests()
+            StorageService.getArchives()
         ]);
         
         setAllProducts(p); 
@@ -129,7 +127,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
         setCoupons(c);
         setReports(rep);
         setFeedbacks(feed);
-        setJokiRequests(jokiReqs);
         setSiteProfile(prof || DEFAULT_PROFILE);
         setArchives(arch);
         setStats(prev => ({ ...prev, totalMembers: onlyMembers.length }));
@@ -329,16 +326,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       }
   };
 
-  const handleCleanupLuckyWheel = async () => {
-      if(confirm("Yakin ingin menghapus semua history poin dari 'Lucky Wheel'? Tindakan ini tidak mengurangi saldo user sekarang, hanya menghapus log history.")) {
-          setLoading(true);
-          const count = await StorageService.deletePointHistoryByReason('Lucky Wheel');
-          setLoading(false);
-          addToast(`Berhasil menghapus ${count} data history poin.`, "success");
-          refreshData();
-      }
-  };
-
   const handleAddCoupon = async () => {
       if(!newCoupon.code || !newCoupon.discountAmount) return addToast("Lengkapi data kupon", "error");
       const coupon: Coupon = {
@@ -378,20 +365,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
           setFeedbacks(prev => prev.filter(f => f.id !== id));
           addToast("Feedback dihapus", "info");
       }
-  };
-
-  // Fixed Joki Action Handler
-  const handleJokiAction = async (req: ServiceRequest, action: 'ACCEPT' | 'REJECT') => {
-      if(action === 'ACCEPT') {
-          await StorageService.updateServiceRequestStatus(req.id, 'IN_PROGRESS');
-          addToast("Permintaan diterima! Status diubah ke In Progress.", "success");
-          // Optionally auto-create chat logic here if needed
-          navigate(`/chat?userId=${req.id.replace('JOKI_', '')}`); // Assuming custom logic to link ID to user
-      } else {
-          await StorageService.updateServiceRequestStatus(req.id, 'REJECTED');
-          addToast("Permintaan ditolak.", "info");
-      }
-      refreshData();
   };
 
   const handleDownloadArchive = (content: string, date: string) => {
@@ -437,7 +410,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             {[
                 { id: 'overview', label: 'Ringkasan', icon: TrendingUp },
                 { id: 'orders', label: 'Pesanan Masuk', icon: ShoppingCart, badge: stats.pendingOrders },
-                { id: 'joki', label: 'Permintaan Joki', icon: Swords }, 
                 { id: 'members', label: 'Daftar Member', icon: Users },
                 { id: 'stores', label: 'Manajemen Toko', icon: Store },
                 { id: 'products', label: 'Katalog Produk', icon: Package },
@@ -524,46 +496,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: JOKI REQUESTS */}
-          {activeTab === 'joki' && (
-              <div className="animate-fade-in space-y-6">
-                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8 shadow-xl">
-                      <h3 className="text-2xl font-bold text-white mb-8 flex items-center gap-3"><Swords size={28}/> Permintaan Pendaftaran Joki</h3>
-                      
-                      {jokiRequests.length === 0 ? (
-                          <div className="text-center py-16 text-gray-500 border border-dashed border-white/5 rounded-3xl">Belum ada permintaan masuk.</div>
-                      ) : (
-                          <div className="grid grid-cols-1 gap-6">
-                              {jokiRequests.map(req => (
-                                  <div key={req.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex flex-col md:flex-row justify-between gap-6 hover:border-brand-500/30 transition-all">
-                                      <div className="space-y-2">
-                                          <div className="flex items-center gap-2">
-                                              <span className={`bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded text-xs font-bold border border-yellow-500/20 ${req.status === 'REJECTED' ? 'bg-red-500/20 text-red-500 border-red-500/20' : req.status === 'IN_PROGRESS' ? 'bg-green-500/20 text-green-500 border-green-500/20' : ''}`}>{req.status}</span>
-                                              <span className="text-gray-500 text-xs">{new Date(req.createdAt).toLocaleString()}</span>
-                                          </div>
-                                          <h4 className="text-xl font-bold text-white">{req.name}</h4>
-                                          <p className="text-gray-300 text-sm"><span className="text-gray-500">Kontak:</span> {req.contact}</p>
-                                          <div className="bg-black/30 p-4 rounded-xl text-sm text-gray-300 leading-relaxed border border-white/5">
-                                              {req.description}
-                                          </div>
-                                      </div>
-                                      <div className="flex flex-col gap-2 justify-center min-w-[150px]">
-                                          {req.status === 'OPEN' && (
-                                              <>
-                                                  <button onClick={() => handleJokiAction(req, 'ACCEPT')} className="bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-xl font-bold text-sm shadow-lg">Terima & Chat</button>
-                                                  <button onClick={() => handleJokiAction(req, 'REJECT')} className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white py-2 rounded-xl font-bold text-sm transition-all border border-red-500/20">Tolak</button>
-                                              </>
-                                          )}
-                                          {req.status !== 'OPEN' && <span className="text-center text-gray-500 text-xs">Aksi selesai</span>}
-                                      </div>
-                                  </div>
-                              ))}
-                          </div>
-                      )}
-                  </div>
-              </div>
-          )}
-
           {/* TAB: SETTINGS & BOT */}
           {activeTab === 'settings' && (
             <div className="animate-fade-in space-y-8">
@@ -590,12 +522,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                         className={`px-6 py-3 rounded-xl font-bold text-sm transition-all flex-1 ${siteProfile.isLocked ? 'bg-red-600 text-white' : 'bg-dark-bg border border-red-500/30 text-white hover:bg-red-500/20'}`}
                                      >
                                          {siteProfile.isLocked ? 'NONAKTIFKAN MAINTENANCE' : 'AKTIFKAN MAINTENANCE MODE'}
-                                     </button>
-                                     <button 
-                                        onClick={handleCleanupLuckyWheel}
-                                        className="px-6 py-3 rounded-xl font-bold text-sm transition-all flex-1 bg-dark-bg border border-red-500/30 text-white hover:bg-red-500/20"
-                                     >
-                                         HAPUS HISTORY POINT (LUCKY WHEEL)
                                      </button>
                                  </div>
                              </div>
@@ -629,67 +555,6 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                      <label className="block text-sm text-gray-400 mb-2">Deskripsi Toko</label>
                                      <textarea value={siteProfile.description} onChange={e => setSiteProfile({...siteProfile, description: e.target.value})} className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white" rows={3}/>
                                  </div>
-                             </div>
-
-                             {/* DIGIFLAZZ CONFIG */}
-                             <div className="p-6 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
-                                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Zap size={18} className="text-blue-400"/> Integrasi Digiflazz (Otomatis Topup)</h3>
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                     <div>
-                                         <label className="block text-xs font-bold text-gray-500 mb-1">Username</label>
-                                         <input 
-                                            value={siteProfile.digiFlazzConfig?.username || ''} 
-                                            onChange={e => setSiteProfile({
-                                                ...siteProfile, 
-                                                digiFlazzConfig: { ...siteProfile.digiFlazzConfig!, username: e.target.value }
-                                            })}
-                                            className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white"
-                                            placeholder="Digiflazz Username"
-                                         />
-                                     </div>
-                                     <div>
-                                         <label className="block text-xs font-bold text-gray-500 mb-1">API Key (Production/Dev)</label>
-                                         <div className="relative">
-                                             <Key size={16} className="absolute left-3 top-3 text-gray-500"/>
-                                             <input 
-                                                type="password"
-                                                value={siteProfile.digiFlazzConfig?.apiKey || ''} 
-                                                onChange={e => setSiteProfile({
-                                                    ...siteProfile, 
-                                                    digiFlazzConfig: { ...siteProfile.digiFlazzConfig!, apiKey: e.target.value }
-                                                })}
-                                                className="w-full bg-black/20 border border-white/10 rounded-xl pl-10 pr-3 py-3 text-white"
-                                                placeholder="Key rahasia..."
-                                             />
-                                         </div>
-                                     </div>
-                                     <div>
-                                         <label className="block text-xs font-bold text-gray-500 mb-1">Mode</label>
-                                         <select 
-                                            value={siteProfile.digiFlazzConfig?.mode || 'development'}
-                                            onChange={e => setSiteProfile({
-                                                ...siteProfile,
-                                                digiFlazzConfig: { ...siteProfile.digiFlazzConfig!, mode: e.target.value as 'development' | 'production' }
-                                            })}
-                                            className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white"
-                                         >
-                                             <option value="development">Development (Sandbox)</option>
-                                             <option value="production">Production (Live)</option>
-                                         </select>
-                                     </div>
-                                     <div className="flex items-end">
-                                         <button 
-                                            onClick={() => setSiteProfile({
-                                                ...siteProfile,
-                                                digiFlazzConfig: { ...siteProfile.digiFlazzConfig!, isActive: !siteProfile.digiFlazzConfig?.isActive }
-                                            })}
-                                            className={`w-full py-3 rounded-xl font-bold transition-all ${siteProfile.digiFlazzConfig?.isActive ? 'bg-green-600 text-white' : 'bg-white/10 text-gray-400'}`}
-                                         >
-                                             {siteProfile.digiFlazzConfig?.isActive ? 'STATUS: AKTIF' : 'STATUS: NONAKTIF'}
-                                         </button>
-                                     </div>
-                                 </div>
-                                 <p className="text-[10px] text-gray-500 mt-2">*API Key ini tersimpan di database. Pastikan keamanan backend terjaga.</p>
                              </div>
                         </div>
                     </>
@@ -751,7 +616,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
-          {/* TAB: MEMBERS */}
+          {/* TAB: MEMBERS (FIXED LAYOUT) */}
           {activeTab === 'members' && (
               <div className="animate-fade-in space-y-6">
                   <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
@@ -779,20 +644,23 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                           </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* CHANGED: From Grid to Vertical Stack */}
+                      <div className="space-y-4">
                           {members.map(member => (
-                              <div key={member.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex items-center gap-5 hover:border-white/10 transition-all">
-                                  <img src={member.avatar || "https://picsum.photos/50"} className="w-14 h-14 rounded-full object-cover bg-black border-2 border-white/10"/>
-                                  <div className="flex-1 min-w-0">
-                                      <h4 className="font-bold text-white text-base flex items-center gap-2">
-                                          {member.username}
-                                          {member.isVerified && <BadgeCheck size={16} className="text-green-500"/>}
-                                          {member.vipLevel !== 'NONE' && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/20">{member.vipLevel}</span>}
-                                      </h4>
-                                      <p className="text-xs text-gray-400 mt-1">UID: <span className="font-mono cursor-pointer hover:text-white bg-black/30 px-1 rounded" onClick={() => copyToClipboard(member.id)}>{member.id}</span></p>
-                                      <p className="text-xs text-brand-400 font-bold mt-1">Poin: {member.points}</p>
+                              <div key={member.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row items-center gap-5 hover:border-white/10 transition-all">
+                                  <div className="flex items-center gap-4 flex-1 w-full md:w-auto">
+                                      <img src={member.avatar || "https://picsum.photos/50"} className="w-14 h-14 rounded-full object-cover bg-black border-2 border-white/10"/>
+                                      <div className="min-w-0">
+                                          <h4 className="font-bold text-white text-base flex items-center gap-2">
+                                              {member.username}
+                                              {member.isVerified && <BadgeCheck size={16} className="text-green-500"/>}
+                                              {member.vipLevel !== 'NONE' && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/20">{member.vipLevel}</span>}
+                                          </h4>
+                                          <p className="text-xs text-gray-400 mt-1">UID: <span className="font-mono cursor-pointer hover:text-white bg-black/30 px-1 rounded" onClick={() => copyToClipboard(member.id)}>{member.id}</span></p>
+                                          <p className="text-xs text-brand-400 font-bold mt-1">Poin: {member.points}</p>
+                                      </div>
                                   </div>
-                                  <div className="flex gap-2">
+                                  <div className="flex gap-2 self-end md:self-center">
                                       <button onClick={(e) => handleUserAction(e, member.id, 'verify')} className={`p-2.5 rounded-xl ${member.isVerified ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`} title="Verify"><BadgeCheck size={18}/></button>
                                       <button onClick={(e) => handleUserAction(e, member.id, 'ban')} className={`p-2.5 rounded-xl ${member.isBanned ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`} title="Ban"><Ban size={18}/></button>
                                       <button onClick={(e) => handleUserAction(e, member.id, 'delete')} className="p-2.5 bg-white/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white" title="Delete"><Trash2 size={18}/></button>
