@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
 import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive, Feedback, ServiceRequest } from '../types';
-import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare, ChevronDown, ChevronRight, Zap, Bot, Swords, AlertTriangle, Key } from 'lucide-react';
+import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare, ChevronDown, ChevronRight, Zap, Bot, Swords, AlertTriangle, Key, Clock, Moon, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { DEFAULT_PROFILE } from '../constants';
@@ -28,6 +28,46 @@ const DbStatRow = ({ label, count, icon: Icon }: { label: string, count: number,
         <span className="text-white font-bold font-mono text-lg">{count.toLocaleString()}</span>
     </div>
 );
+
+// Countdown Helper Component
+const CountdownTimer = ({ targetDate, label, icon: Icon, colorClass }: { targetDate: Date, label: string, icon: any, colorClass: string }) => {
+    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+    useEffect(() => {
+        const calculate = () => {
+            const diff = targetDate.getTime() - new Date().getTime();
+            if (diff > 0) {
+                setTimeLeft({
+                    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                    hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                    minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+                    seconds: Math.floor((diff % (1000 * 60)) / 1000),
+                });
+            } else {
+                setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+            }
+        };
+        calculate();
+        const interval = setInterval(calculate, 1000);
+        return () => clearInterval(interval);
+    }, [targetDate]);
+
+    return (
+        <div className={`p-6 rounded-2xl border bg-black/20 ${colorClass} flex flex-col items-center justify-center text-center`}>
+            <div className="mb-3 p-3 rounded-full bg-white/5">
+                <Icon size={24} className="fill-current" />
+            </div>
+            <h4 className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">{label}</h4>
+            <div className="text-2xl font-black font-mono text-white flex gap-2">
+                <span>{timeLeft.days}d</span>:
+                <span>{timeLeft.hours.toString().padStart(2,'0')}h</span>:
+                <span>{timeLeft.minutes.toString().padStart(2,'0')}m</span>:
+                <span>{timeLeft.seconds.toString().padStart(2,'0')}s</span>
+            </div>
+            <p className="text-[10px] text-gray-500 mt-2">{targetDate.toLocaleDateString()}</p>
+        </div>
+    );
+};
 
 const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const navigate = useNavigate();
@@ -199,6 +239,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       }
   };
 
+  // ... (Existing handlers: handleAddProduct, handleDeleteProduct, etc.) ...
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price) return addToast("Nama dan Harga wajib diisi", "error");
     const product: Product = {
@@ -506,6 +547,33 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                     </div>
                 ) : (
                     <>
+                        {/* SCHEDULE & THEME COUNTDOWN CARD */}
+                        <div className="bg-dark-card border border-white/5 rounded-3xl p-8 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <Clock className="text-brand-400" size={24}/>
+                                <h3 className="text-xl font-bold text-white">Schedule System</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <CountdownTimer 
+                                    targetDate={new Date('2026-02-01T00:00:00')} 
+                                    label="Auto Switch to Ramadan Theme" 
+                                    icon={Sparkles} 
+                                    colorClass="border-cyan-500/30 text-cyan-400"
+                                />
+                                <CountdownTimer 
+                                    targetDate={new Date('2026-02-18T00:00:00')} 
+                                    label="Ramadan 1447H Begins" 
+                                    icon={Moon} 
+                                    colorClass="border-green-500/30 text-green-400"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-4 text-center">
+                                *Sistem akan otomatis merubah tema visual website dari "Phoenix" ke "Ramadhan" pada tanggal 1 Februari 2026.
+                            </p>
+                        </div>
+
                         {/* GENERAL SETTINGS */}
                         <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
                              <div className="flex justify-between items-center mb-6">
@@ -562,7 +630,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             </div>
           )}
           
-          {/* TAB: ORDERS */}
+          {/* ... (Existing code for orders, members, products, stores, coupons, feedback, reports, logs) ... */}
           {activeTab === 'orders' && (
               <div className="animate-fade-in space-y-6">
                   <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
@@ -672,6 +740,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
               </div>
           )}
 
+          {/* ... (Existing TAB Products, Stores, Coupons, Feedback, Reports, Logs) ... */}
           {/* TAB: PRODUCTS */}
           {activeTab === 'products' && (
               <div className="animate-fade-in flex flex-col xl:flex-row gap-8">

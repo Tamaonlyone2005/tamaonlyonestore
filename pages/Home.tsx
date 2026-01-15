@@ -6,7 +6,7 @@ import ProductCard from '../components/ProductCard';
 import NewsTicker from '../components/NewsTicker';
 import FlashSale from '../components/FlashSale';
 import RamadanCalendar from '../components/RamadanCalendar';
-import { ChevronRight, Package, Wallet, History, Gamepad2, Smartphone, Monitor, Ticket, Zap, Globe, Grid, Lock, Crown, Gift, Moon, Star } from 'lucide-react';
+import { ChevronRight, Package, Wallet, History, Gamepad2, Smartphone, Monitor, Ticket, Zap, Globe, Grid, Lock, Crown, Gift, Moon, Star, Sparkles } from 'lucide-react';
 import { ProductSkeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 
@@ -16,6 +16,9 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { addToast } = useToast();
+  
+  // Theme State derived from global window variable set in index.html
+  const isRamadanTheme = window.IS_RAMADAN_THEME;
 
   useEffect(() => {
     const init = async () => {
@@ -51,22 +54,32 @@ const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-dark-bg pb-24 md:pb-20">
       
-      {/* HERO SECTION - RAMADAN EDITION */}
+      {/* HERO SECTION - DYNAMIC THEME */}
       <div className="bg-dark-bg relative overflow-hidden py-16 md:py-24">
           <div className="max-w-7xl mx-auto px-6 relative z-10">
               <div className="flex flex-col md:flex-row items-center justify-between gap-12">
                   <div className="max-w-2xl animate-slide-up">
-                      {/* Greeting */}
+                      {/* Greeting Badge */}
                       <div className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20">
-                          <Moon size={14} className="text-gold-400 fill-current"/>
-                          <span className="text-brand-400 text-xs font-bold tracking-wide uppercase">Ramadhan 1447 H</span>
+                          {isRamadanTheme ? <Moon size={14} className="text-gold-400 fill-current"/> : <Sparkles size={14} className="text-brand-400 fill-current"/>}
+                          <span className="text-brand-400 text-xs font-bold tracking-wide uppercase">
+                              {isRamadanTheme ? "Ramadhan 1447 H" : "Midnight Aurora Season"}
+                          </span>
                       </div>
+                      
+                      {/* Dynamic Title */}
                       <h1 className="text-5xl md:text-6xl font-black text-white leading-tight mb-6 drop-shadow-lg">
-                          Marhaban Ya <br/>
-                          <span className="text-brand-500">Ramadhan 2026</span>
+                          {isRamadanTheme ? (
+                              <>Marhaban Ya <br/><span className="text-brand-500">Ramadhan 2026</span></>
+                          ) : (
+                              <>Level Up <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600">Your Game</span></>
+                          )}
                       </h1>
+                      
                       <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-lg mb-8 font-light">
-                          Rayakan kemenangan dengan skin favorit & voucher game termurah. Promo berkah menantimu setiap hari.
+                          {isRamadanTheme 
+                            ? "Rayakan kemenangan dengan skin favorit & voucher game termurah. Promo berkah menantimu setiap hari." 
+                            : "Rasakan pengalaman top up tercepat dengan sistem otomatis 24 jam. Harga bersahabat, layanan sultan."}
                       </p>
                       
                       <div className="flex gap-4">
@@ -81,25 +94,45 @@ const Home: React.FC = () => {
                       </div>
                   </div>
 
-                  {/* Hero Cards Visual with Ramadan Touches */}
+                  {/* Hero Cards Visual - Dynamic Colors */}
                   <div className="hidden md:flex relative gap-6 pr-10 animate-fade-in">
-                      {/* Lantern Decoration */}
-                      <div className="absolute -top-10 left-10 text-gold-500 animate-float opacity-80" style={{ animationDelay: '1s' }}>
-                          <div className="w-1 h-20 bg-gold-600 mx-auto"></div>
-                          <div className="w-8 h-10 bg-gold-400 rounded-lg shadow-lg shadow-gold-400/50"></div>
+                      {/* Decoration Float */}
+                      <div className="absolute -top-10 left-10 animate-float opacity-80" style={{ animationDelay: '1s' }}>
+                          {isRamadanTheme ? (
+                              <div className="text-gold-500">
+                                  <div className="w-1 h-20 bg-gold-600 mx-auto"></div>
+                                  <div className="w-8 h-10 bg-gold-400 rounded-lg shadow-lg shadow-gold-400/50"></div>
+                              </div>
+                          ) : (
+                              <div className="relative">
+                                  <Sparkles size={48} className="text-brand-400 fill-brand-400 drop-shadow-lg animate-pulse"/>
+                                  <div className="absolute inset-0 bg-brand-400 blur-xl opacity-30"></div>
+                              </div>
+                          )}
                       </div>
 
-                      <div className="w-48 h-64 bg-gradient-to-br from-brand-700 to-brand-900 rounded-3xl shadow-2xl transform -rotate-6 hover:rotate-0 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4 relative overflow-hidden">
+                      <div className={`w-48 h-64 bg-gradient-to-br ${isRamadanTheme ? 'from-brand-700 to-brand-900' : 'from-cyan-900 to-blue-900'} rounded-3xl shadow-2xl transform -rotate-6 hover:rotate-0 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4 relative overflow-hidden group`}>
                           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-10"></div>
+                          {/* Inner Glow */}
+                          <div className="absolute inset-0 bg-brand-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                          
                           <Gamepad2 size={48} className="text-white mb-4 relative z-10"/>
-                          <span className="font-black text-white text-lg relative z-10">Berkah Gaming</span>
+                          <span className="font-black text-white text-lg relative z-10">
+                              {isRamadanTheme ? "Berkah Gaming" : "Pro Gaming"}
+                          </span>
                           <p className="text-brand-200 text-xs text-center mt-2 relative z-10">Mobile Legends, PUBG, FF</p>
                       </div>
-                      <div className="w-48 h-64 bg-dark-card rounded-3xl shadow-2xl transform rotate-6 translate-y-8 hover:rotate-0 hover:translate-y-4 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4 relative overflow-hidden">
+                      <div className="w-48 h-64 bg-dark-card rounded-3xl shadow-2xl transform rotate-6 translate-y-8 hover:rotate-0 hover:translate-y-4 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4 relative overflow-hidden group">
                           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-10"></div>
-                          <Ticket size={48} className="text-gold-400 mb-4 relative z-10"/>
-                          <span className="font-black text-white text-lg relative z-10">THR Voucher</span>
-                          <p className="text-gray-400 text-xs text-center mt-2 relative z-10">Diskon Spesial Sahur</p>
+                          <div className="absolute inset-0 bg-purple-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+                          <Ticket size={48} className={isRamadanTheme ? "text-gold-400" : "text-purple-500"} style={{marginBottom: '1rem', position: 'relative', zIndex: 10}}/>
+                          <span className="font-black text-white text-lg relative z-10">
+                              {isRamadanTheme ? "THR Voucher" : "Hot Deals"}
+                          </span>
+                          <p className="text-gray-400 text-xs text-center mt-2 relative z-10">
+                              {isRamadanTheme ? "Diskon Spesial Sahur" : "Promo Spesial"}
+                          </p>
                       </div>
                   </div>
               </div>
@@ -107,7 +140,7 @@ const Home: React.FC = () => {
           
           {/* Decorative Background Elements */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gold-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+          <div className={`absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full blur-[100px] pointer-events-none ${isRamadanTheme ? 'bg-gold-600/10' : 'bg-purple-600/10'}`}></div>
       </div>
 
       {/* News Ticker */}
@@ -165,8 +198,8 @@ const Home: React.FC = () => {
               </div>
           )}
 
-          {/* RAMADAN CALENDAR */}
-          <RamadanCalendar />
+          {/* RAMADAN CALENDAR (Only Show if Theme is Ramadan) */}
+          {isRamadanTheme && <RamadanCalendar />}
 
           {/* LOCKED GRID MENU CONTAINER */}
           <div className="relative mt-8 rounded-3xl p-1 bg-white/5 border border-white/10 shadow-inner">
@@ -215,7 +248,7 @@ const Home: React.FC = () => {
           <section>
               <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                      Rekomendasi Sahur
+                      {isRamadanTheme ? "Rekomendasi Sahur" : "Rekomendasi Pilihan"}
                   </h2>
                   <button onClick={() => navigate('/shop')} className="text-brand-400 font-bold text-xs flex items-center gap-1">
                       Lihat Semua <ChevronRight size={14}/>

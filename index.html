@@ -9,18 +9,18 @@
     <link rel="manifest" href="/manifest.json" />
     
     <!-- SEO & Identity -->
-    <title>Tamaonlyone Store | Spesial Ramadhan 2026</title>
-    <meta name="description" content="Pusat Top Up Game, Voucher, dan Produk Digital Termurah & Terpercaya. Promo Spesial Ramadhan." />
-    <meta name="keywords" content="top up ml, voucher game, jasa joki, tamaonlyone store, diamond murah, promo ramadhan" />
+    <title>Tamaonlyone Store | Official Gaming Shop</title>
+    <meta name="description" content="Pusat Top Up Game, Voucher, dan Produk Digital Termurah & Terpercaya." />
+    <meta name="keywords" content="top up ml, voucher game, jasa joki, tamaonlyone store, diamond murah" />
     <meta name="author" content="Tamaonlyone Store" />
 
-    <!-- Browser Theme Color -->
-    <meta name="theme-color" content="#022c22" />
+    <!-- Browser Theme Color (Dynamic via JS below) -->
+    <meta name="theme-color" content="#020617" id="theme-color-meta" />
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://tamaonlyonestore.my.id" />
 
-    <meta property="og:title" content="Tamaonlyone Store - Promo Ramadhan" />
+    <meta property="og:title" content="Tamaonlyone Store" />
     <meta property="og:description" content="Belanja kebutuhan game dan produk digital dengan harga terbaik. Aman dan Cepat." />
     <meta property="og:image" content="https://picsum.photos/1200/630" /> 
     <meta property="og:url" content="https://tamaonlyonestore.my.id" />
@@ -28,6 +28,54 @@
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- THEME LOGIC SCRIPT -->
+    <script>
+      (function() {
+        const THEME_SWITCH_DATE = new Date('2026-02-01T00:00:00').getTime();
+        const now = Date.now();
+        const isRamadanTheme = now >= THEME_SWITCH_DATE;
+
+        // Define Color Palettes
+        const themes = {
+          // MODIFIED: Phoenix key now holds "Midnight Aurora" values
+          phoenix: {
+            brand500: '#06b6d4', // Cyan 500 (Electric Blue/Cyan)
+            brand600: '#0891b2', // Cyan 600
+            brand900: '#164e63', // Cyan 900 (Deep Teal)
+            bgDark: '#020617',   // Slate 950 (Deep Navy/Space)
+            card: '#0f172a',     // Slate 900 (Slightly Lighter Navy)
+            accent: '#8b5cf6'    // Violet 500 (Aurora Purple Accent)
+          },
+          ramadan: {
+            brand500: '#10b981', // Emerald 500
+            brand600: '#059669', // Emerald 600
+            brand900: '#064e3b', // Emerald 900
+            bgDark: '#022c22',   // Deep Green Black
+            card: '#064e3b',     // Dark Green Card
+            accent: '#fbbf24'    // Gold
+          }
+        };
+
+        const activeTheme = isRamadanTheme ? themes.ramadan : themes.phoenix;
+
+        // Inject CSS Variables
+        const root = document.documentElement;
+        root.style.setProperty('--color-brand-500', activeTheme.brand500);
+        root.style.setProperty('--color-brand-600', activeTheme.brand600);
+        root.style.setProperty('--color-brand-900', activeTheme.brand900);
+        root.style.setProperty('--color-bg-dark', activeTheme.bgDark);
+        root.style.setProperty('--color-card', activeTheme.card);
+        root.style.setProperty('--color-accent', activeTheme.accent);
+
+        // Update Meta Theme Color
+        document.getElementById('theme-color-meta').setAttribute('content', activeTheme.bgDark);
+        
+        // Global Flag for React components
+        window.IS_RAMADAN_THEME = isRamadanTheme;
+      })();
+    </script>
+
     <script>
       tailwind.config = {
         darkMode: 'class',
@@ -35,11 +83,11 @@
           extend: {
             colors: {
               brand: {
-                50: '#ecfdf5',
-                100: '#d1fae5',
-                500: '#10b981', // Emerald Green (Ramadhan Theme)
-                600: '#059669', // Darker Emerald
-                900: '#064e3b', // Deep Green
+                50: '#ecfeff', // Cyan 50
+                100: '#cffafe', // Cyan 100
+                500: 'var(--color-brand-500)', 
+                600: 'var(--color-brand-600)',
+                900: 'var(--color-brand-900)',
               },
               gold: {
                 400: '#fbbf24',
@@ -47,18 +95,20 @@
                 600: '#d97706',
               },
               dark: {
-                bg: '#022c22', // Very dark green/black background
-                card: '#064e3b', // Dark green card
-                text: '#ecfdf5',
-                muted: '#6ee7b7'
+                bg: 'var(--color-bg-dark)', 
+                card: 'var(--color-card)', 
+                text: '#f1f5f9', // Slate 100
+                muted: '#94a3b8'
               }
             },
             animation: {
               'fade-in': 'fadeIn 0.5s ease-out',
               'slide-up': 'slideUp 0.5s ease-out',
-              'float': 'float 3s ease-in-out infinite',
+              'float': 'float 6s ease-in-out infinite',
               'sway': 'sway 3s ease-in-out infinite',
               'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'fire': 'fire 3s ease-in-out infinite alternate',
+              'aurora': 'aurora 10s ease infinite alternate',
             },
             keyframes: {
               fadeIn: {
@@ -71,11 +121,19 @@
               },
               float: {
                 '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
+                '50%': { transform: 'translateY(-20px)' },
               },
               sway: {
                 '0%, 100%': { transform: 'rotate(-5deg)' },
                 '50%': { transform: 'rotate(5deg)' },
+              },
+              fire: {
+                '0%': { textShadow: '0 0 20px #fef08a, 0 0 40px #facc15' },
+                '100%': { textShadow: '0 0 10px #fca5a5, 0 0 20px #ef4444' }
+              },
+              aurora: {
+                '0%': { transform: 'scale(1) translate(0,0)', opacity: '0.3' },
+                '100%': { transform: 'scale(1.2) translate(20px, -20px)', opacity: '0.6' }
               }
             }
           }
@@ -88,23 +146,24 @@
         width: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #022c22; 
+        background: var(--color-bg-dark); 
       }
       ::-webkit-scrollbar-thumb {
-        background: #064e3b; 
+        background: var(--color-brand-600); 
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #059669; 
+        background: var(--color-brand-500); 
       }
       body {
-        background-color: #022c22;
-        color: #ecfdf5;
+        background-color: var(--color-bg-dark);
+        color: #f1f5f9;
         font-family: 'Inter', sans-serif;
-        /* PERFORMANCE FIX: Removed complex CSS patterns. Using simple gradient */
-        background-image: linear-gradient(to bottom right, #022c22, #064e3b, #022c22);
+        /* Midnight Aurora Gradient Background */
+        background-image: linear-gradient(to bottom right, #020617, #0f172a, #1e1b4b);
         background-attachment: fixed;
         min-height: 100vh;
+        transition: background-color 0.5s ease;
       }
       .no-scrollbar::-webkit-scrollbar {
           display: none;

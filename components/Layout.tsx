@@ -1,14 +1,20 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, UserRole, OrderStatus, Order } from '../types';
 import { AuthService } from '../services/authService';
 import { StorageService } from '../services/storageService';
-import { Bell, ShoppingCart, Shield, Store, Search, Home, Gamepad2, Users, ShoppingBag, Moon, Zap, Star } from 'lucide-react';
+import { Bell, ShoppingCart, Shield, Store, Search, Home, Gamepad2, Users, ShoppingBag, Moon, Zap, Star, Sparkles } from 'lucide-react';
 import { COPYRIGHT } from '../constants';
 import BottomNav from './BottomNav';
 import BackToTop from './BackToTop';
 import { useToast } from './Toast';
+
+// Global declaration for the flag set in index.html
+declare global {
+    interface Window {
+        IS_RAMADAN_THEME: boolean;
+    }
+}
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,6 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   const [siteLogo, setSiteLogo] = useState<string>('');
   const [siteName, setSiteName] = useState<string>('Tamaonlyone Store');
   const [scrolled, setScrolled] = useState(false);
+  const isRamadan = window.IS_RAMADAN_THEME;
   
   const prevOrdersRef = useRef<Order[]>([]);
   
@@ -139,32 +146,44 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-white font-sans selection:bg-brand-500 selection:text-white">
       
-      {/* ================= RAMADAN DECORATION (Desktop) ================= */}
+      {/* ================= DYNAMIC DECORATION (MIDNIGHT AURORA vs RAMADAN) ================= */}
       <div className="fixed top-0 left-0 right-0 z-[60] pointer-events-none hidden md:block">
-          {/* Lampion Kiri */}
-          <div className="absolute top-0 left-10 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '4s'}}>
-              <div className="w-0.5 h-16 bg-gold-500/50"></div>
-              <div className="w-8 h-10 bg-gradient-to-b from-brand-600 to-brand-800 rounded-lg border border-gold-500 shadow-lg shadow-gold-500/50 relative flex items-center justify-center">
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-30"></div>
-                  <div className="w-2 h-2 bg-yellow-200 rounded-full blur-[2px] animate-pulse"></div>
-              </div>
-              <div className="w-0.5 h-4 bg-gold-500"></div>
-          </div>
-          
-          {/* Ketupat/Star Tengah */}
-          <div className="absolute top-0 left-1/3 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '5s', animationDelay: '1s'}}>
-              <div className="w-0.5 h-24 bg-gold-500/30"></div>
-              <Star className="text-gold-400 fill-gold-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]" size={24}/>
-          </div>
-
-          {/* Lampion Kanan */}
-          <div className="absolute top-0 right-10 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '4.5s', animationDelay: '0.5s'}}>
-              <div className="w-0.5 h-20 bg-gold-500/50"></div>
-              <div className="w-10 h-12 bg-gradient-to-b from-brand-600 to-brand-800 rounded-full border border-gold-500 shadow-lg shadow-gold-500/50 relative flex items-center justify-center">
-                   <div className="w-2 h-2 bg-yellow-200 rounded-full blur-[2px] animate-pulse"></div>
-              </div>
-              <div className="w-0.5 h-4 bg-gold-500"></div>
-          </div>
+          {isRamadan ? (
+              // RAMADAN DECORATIONS (Lampions)
+              <>
+                  <div className="absolute top-0 left-10 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '4s'}}>
+                      <div className="w-0.5 h-16 bg-gold-500/50"></div>
+                      <div className="w-8 h-10 bg-gradient-to-b from-brand-600 to-brand-800 rounded-lg border border-gold-500 shadow-lg shadow-gold-500/50 relative flex items-center justify-center">
+                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-30"></div>
+                          <div className="w-2 h-2 bg-yellow-200 rounded-full blur-[2px] animate-pulse"></div>
+                      </div>
+                      <div className="w-0.5 h-4 bg-gold-500"></div>
+                  </div>
+                  <div className="absolute top-0 left-1/3 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '5s', animationDelay: '1s'}}>
+                      <div className="w-0.5 h-24 bg-gold-500/30"></div>
+                      <Star className="text-gold-400 fill-gold-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]" size={24}/>
+                  </div>
+                  <div className="absolute top-0 right-10 flex flex-col items-center animate-sway origin-top" style={{animationDuration: '4.5s', animationDelay: '0.5s'}}>
+                      <div className="w-0.5 h-20 bg-gold-500/50"></div>
+                      <div className="w-10 h-12 bg-gradient-to-b from-brand-600 to-brand-800 rounded-full border border-gold-500 shadow-lg shadow-gold-500/50 relative flex items-center justify-center">
+                           <div className="w-2 h-2 bg-yellow-200 rounded-full blur-[2px] animate-pulse"></div>
+                      </div>
+                      <div className="w-0.5 h-4 bg-gold-500"></div>
+                  </div>
+              </>
+          ) : (
+              // MIDNIGHT AURORA DECORATIONS (Glowing Blobs & Sparkles)
+              <>
+                  <div className="absolute top-[-100px] left-[10%] w-64 h-64 bg-brand-500 rounded-full blur-[120px] opacity-20 animate-aurora"></div>
+                  <div className="absolute top-[-50px] right-[20%] w-80 h-80 bg-purple-600 rounded-full blur-[150px] opacity-20 animate-aurora" style={{animationDelay: '2s'}}></div>
+                  <div className="absolute top-40 right-[10%] text-brand-400 animate-float opacity-50" style={{animationDelay: '1s'}}>
+                      <Sparkles size={24} className="fill-current"/>
+                  </div>
+                  <div className="absolute top-20 left-[20%] text-purple-400 animate-pulse-fast opacity-40">
+                      <Star size={16} className="fill-current"/>
+                  </div>
+              </>
+          )}
       </div>
 
       {/* ================= DESKTOP NAVIGATION ================= */}
@@ -177,7 +196,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                     {siteLogo ? (
                         <img src={siteLogo} alt="Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform"/>
                     ) : (
-                        <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20 border border-gold-500/30">
+                        <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20 border border-white/10">
                             {siteName.charAt(0)}
                         </div>
                     )}
@@ -189,7 +208,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
 
             {/* 2. Center: Navigation Links (Flex-1 to take space and center) */}
             <div className="flex-1 flex justify-center">
-                <div className="flex items-center gap-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-sm">
+                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/5 backdrop-blur-sm">
                     <Link to="/" className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isActive('/') ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/40' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}>
                       <Home size={16} /> Home
                     </Link>
@@ -263,7 +282,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
                            {siteLogo ? (
                               <img src={siteLogo} className="w-9 h-9 rounded-xl object-cover shadow-lg"/>
                           ) : (
-                              <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg border border-gold-500/30">{siteName.charAt(0)}</div>
+                              <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg border border-white/30">{siteName.charAt(0)}</div>
                           )}
                           <span className="font-extrabold text-lg text-white tracking-tight">{renderLogoText(siteName)}</span>
                       </div>
@@ -309,10 +328,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, refreshSession }) => {
           {/* Brand Column */}
           <div className="col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white border border-gold-500/30">{siteName.charAt(0)}</div>
+                  <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white border border-white/30">{siteName.charAt(0)}</div>
                   <span className="font-bold text-xl text-white">{renderLogoText(siteName)}</span>
               </div>
-              <p className="text-gray-500 text-sm leading-relaxed mb-6">Platform top up game dan produk digital terpercaya dengan proses otomatis 24 jam. Spesial Ramadhan 2026.</p>
+              <p className="text-gray-500 text-sm leading-relaxed mb-6">Platform top up game dan produk digital terpercaya dengan proses otomatis 24 jam. Official Partner.</p>
           </div>
           
           {/* Navigation Column */}
