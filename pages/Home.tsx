@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { StorageService } from '../services/storageService';
 import { Product, User, UserRole } from '../types';
@@ -44,15 +43,9 @@ const Home: React.FC = () => {
       { name: 'Lainnya', icon: Grid, gradient: 'from-gray-500 to-slate-600', shadow: 'shadow-gray-500/40' },
   ];
 
+  // Updated Handler: Block ALL access
   const handleMenuClick = (item: any) => {
-      if (item.path) {
-          navigate(item.path);
-      } else if (user?.role === UserRole.ADMIN) {
-          addToast(`Admin Access: Membuka fitur ${item.name}`, "success");
-          navigate('/shop'); // Placeholder for now, or route to generic shop category
-      } else {
-          addToast(`Fitur ${item.name} akan segera hadir!`, "info");
-      }
+      addToast("Fitur sedang dalam pembaruan sistem. Segera Hadir!", "info");
   };
 
   return (
@@ -175,30 +168,33 @@ const Home: React.FC = () => {
           {/* RAMADAN CALENDAR */}
           <RamadanCalendar />
 
-          {/* GRID MENU - MODERNIZED */}
-          <div className="grid grid-cols-4 gap-y-6 gap-x-4">
-              {menuItems.map((item, idx) => (
-                  <div key={idx} onClick={() => handleMenuClick(item)} className="flex flex-col items-center gap-2 relative group cursor-pointer opacity-95 hover:opacity-100 transition-all hover:scale-105">
-                      <div className={`w-14 h-14 bg-gradient-to-br ${item.gradient} rounded-2xl flex items-center justify-center shadow-lg ${item.shadow} relative overflow-hidden ring-2 ring-white/5 group-hover:ring-white/20 transition-all`}>
-                          <item.icon size={26} className="text-white drop-shadow-md" />
-                          
-                          {/* Inner Shine */}
-                          <div className="absolute top-0 left-0 w-full h-1/2 bg-white/10 pointer-events-none"></div>
-
-                          {!item.path && user?.role !== UserRole.ADMIN && (
-                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
-                                  <Lock size={14} className="text-white"/>
-                              </div>
-                          )}
-                          {!item.path && user?.role === UserRole.ADMIN && (
-                              <div className="absolute top-1 right-1">
-                                  <span className="block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                              </div>
-                          )}
-                      </div>
-                      <span className="text-[11px] text-gray-300 text-center font-bold leading-tight group-hover:text-white transition-colors">{item.name}</span>
+          {/* LOCKED GRID MENU CONTAINER */}
+          <div className="relative mt-8 rounded-3xl p-1 bg-white/5 border border-white/10 shadow-inner">
+              
+              {/* LOCK BADGE - CENTERED ON TOP BORDER */}
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-20">
+                  <div className="bg-dark-card border border-white/10 px-5 py-1.5 rounded-full shadow-xl flex items-center gap-2 ring-4 ring-dark-bg">
+                      <Lock size={14} className="text-yellow-500 fill-current" />
+                      <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                          Segera Hadir!
+                      </span>
                   </div>
-              ))}
+              </div>
+
+              {/* MENU ITEMS (Visible but blocked) */}
+              <div className="grid grid-cols-4 gap-y-6 gap-x-4 p-6 pointer-events-none filter grayscale opacity-50">
+                  {menuItems.map((item, idx) => (
+                      <div key={idx} onClick={() => handleMenuClick(item)} className="flex flex-col items-center gap-2 relative group cursor-pointer">
+                          <div className={`w-14 h-14 bg-gradient-to-br ${item.gradient} rounded-2xl flex items-center justify-center shadow-lg ${item.shadow} relative overflow-hidden ring-2 ring-white/5`}>
+                              <item.icon size={26} className="text-white drop-shadow-md" />
+                              
+                              {/* Inner Shine */}
+                              <div className="absolute top-0 left-0 w-full h-1/2 bg-white/10 pointer-events-none"></div>
+                          </div>
+                          <span className="text-[11px] text-gray-300 text-center font-bold leading-tight">{item.name}</span>
+                      </div>
+                  ))}
+              </div>
           </div>
 
           {/* FILTER PILLS */}
