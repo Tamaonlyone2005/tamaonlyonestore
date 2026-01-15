@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
 import { Product, User, CartItem } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { ProductSkeleton } from '../components/Skeleton';
-import { Search, Filter, Package, X, ShoppingCart, ArrowRight, Info, Zap } from 'lucide-react';
+import { Search, Filter, Package, X, ShoppingCart, ArrowRight, Info, Zap, Store, Crown } from 'lucide-react';
 import { useToast } from '../components/Toast';
 
 interface ShopProps {
@@ -70,6 +69,17 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
       return matchesSearch && matchesCategory;
   });
 
+  // Grouping Logic
+  const adminProducts = filteredProducts.filter(p => !p.sellerId);
+  const memberProducts = filteredProducts.filter(p => p.sellerId);
+
+  const groupedMemberProducts = memberProducts.reduce((acc, product) => {
+      const storeName = product.sellerName || 'Mitra Seller';
+      if (!acc[storeName]) acc[storeName] = [];
+      acc[storeName].push(product);
+      return acc;
+  }, {} as Record<string, Product[]>);
+
   const handleProductClick = (product: Product) => {
       // Update URL to trigger modal via useEffect
       navigate(`/shop?product=${product.id}${selectedCategory !== 'All' ? `&category=${selectedCategory}` : ''}`);
@@ -102,6 +112,17 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
       addToast("Produk masuk keranjang!", "success");
       closeModal();
   };
+
+  const SectionTitle = ({ title, icon: Icon, colorClass }: { title: string, icon: any, colorClass: string }) => (
+      <div className="flex items-center justify-center my-8 animate-fade-in">
+          <div className={`h-px w-12 md:w-24 bg-gradient-to-r from-transparent to-${colorClass}-500/50`}></div>
+          <div className={`mx-4 px-6 py-2 rounded-full bg-${colorClass}-500/10 border border-${colorClass}-500/20 backdrop-blur-sm flex items-center gap-3`}>
+              <Icon size={20} className={`text-${colorClass}-400`} />
+              <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-wider">{title}</h2>
+          </div>
+          <div className={`h-px w-12 md:w-24 bg-gradient-to-l from-transparent to-${colorClass}-500/50`}></div>
+      </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0f172a] pb-24">
@@ -142,35 +163,55 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
             </div>
         </div>
 
-        {/* Product Grid */}
-        <div className="max-w-7xl mx-auto px-4 py-6">
-            <h1 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Package className="text-brand-400"/> 
-                {selectedCategory === 'All' ? 'Semua Produk' : selectedCategory} 
-                <span className="text-sm font-normal text-gray-500">({filteredProducts.length})</span>
-            </h1>
-
+        {/* Product Content */}
+        <div className="max-w-7xl mx-auto px-4 py-2">
+            
             {loading ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="mt-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {[...Array(10)].map((_, i) => <ProductSkeleton key={i} />)}
                 </div>
             ) : filteredProducts.length === 0 ? (
-                <div className="text-center py-20 bg-[#1e293b] rounded-3xl border border-white/5 border-dashed">
+                <div className="mt-12 text-center py-20 bg-[#1e293b] rounded-3xl border border-white/5 border-dashed">
                     <Package size={48} className="mx-auto text-gray-600 mb-4 opacity-50"/>
                     <p className="text-gray-400 font-bold">Produk tidak ditemukan.</p>
                     <p className="text-gray-600 text-sm">Coba kata kunci lain atau kategori berbeda.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {filteredProducts.map(p => (
-                        <ProductCard 
-                            key={p.id} 
-                            product={p} 
-                            canBuy={true} 
-                            onBuy={() => handleProductClick(p)} 
-                        />
+                <>
+                    {/* SECTION 1: ADMIN PRODUCTS (MY STORE) */}
+                    {adminProducts.length > 0 && (
+                        <div className="mb-12">
+                            <SectionTitle title="My Store" icon={Crown} colorClass="brand" />
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                {adminProducts.map(p => (
+                                    <ProductCard 
+                                        key={p.id} 
+                                        product={p} 
+                                        canBuy={true} 
+                                        onBuy={() => handleProductClick(p)} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SECTION 2: MEMBER PRODUCTS GROUPED BY STORE */}
+                    {Object.entries(groupedMemberProducts).map(([storeName, products]) => (
+                        <div key={storeName} className="mb-12">
+                            <SectionTitle title={storeName} icon={Store} colorClass="blue" />
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                {(products as Product[]).map(p => (
+                                    <ProductCard 
+                                        key={p.id} 
+                                        product={p} 
+                                        canBuy={true} 
+                                        onBuy={() => handleProductClick(p)} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     ))}
-                </div>
+                </>
             )}
         </div>
 
@@ -197,7 +238,11 @@ const Shop: React.FC<ShopProps> = ({ user }) => {
                             <p className="text-brand-400 font-bold text-xl">Rp {selectedProduct.price.toLocaleString()}</p>
                             <div className="flex gap-2 mt-2">
                                 <span className="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-400 uppercase">{selectedProduct.type}</span>
-                                {selectedProduct.sellerName && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">Seller: {selectedProduct.sellerName}</span>}
+                                {selectedProduct.sellerName ? (
+                                    <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded flex items-center gap-1"><Store size={10}/> {selectedProduct.sellerName}</span>
+                                ) : (
+                                    <span className="text-[10px] bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded flex items-center gap-1"><Crown size={10}/> My Store</span>
+                                )}
                             </div>
                             <p className="text-gray-400 text-sm mt-4 leading-relaxed bg-black/20 p-3 rounded-xl border border-white/5">
                                 {selectedProduct.description || "Tidak ada deskripsi."}
