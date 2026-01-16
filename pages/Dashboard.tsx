@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
 import { Product, User, UserRole, Order, ActivityLog, OrderStatus, Coupon, ProductType, SiteProfile, StoreStatus, Report, Archive, Feedback, ServiceRequest } from '../types';
-import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare, ChevronDown, ChevronRight, Zap, Bot, Swords, AlertTriangle, Key, Clock, Moon, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Save, Package, LayoutDashboard, CheckCircle, Ban, Image as ImageIcon, Coins, ShoppingCart, FileText, BadgeCheck, Ticket, TrendingUp, Users, DollarSign, Loader2, Search, X, Settings, Upload, Store, Lock, Unlock, Flag, Edit2, Database, Server, HardDrive, Download, Copy, Calendar, List, ArrowUpCircle, MessageSquare, ChevronDown, ChevronRight, Zap, Bot, Swords, AlertTriangle, Key, Clock, Moon, Sparkles, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { DEFAULT_PROFILE } from '../constants';
@@ -94,6 +94,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
   // Form States
   const [newProduct, setNewProduct] = useState<Partial<Product>>({ type: 'ITEM' });
+  const [editingProductId, setEditingProductId] = useState<string | null>(null); // Track if editing
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false); // New state for logo upload
   
@@ -239,11 +240,10 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       }
   };
 
-  // ... (Existing handlers: handleAddProduct, handleDeleteProduct, etc.) ...
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price) return addToast("Nama dan Harga wajib diisi", "error");
     const product: Product = {
-      id: Date.now().toString(),
+      id: editingProductId ? editingProductId : Date.now().toString(),
       name: newProduct.name!,
       price: Number(newProduct.price),
       category: newProduct.category || 'General',
@@ -251,11 +251,28 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
       stock: 999,
       image: newProduct.image,
       type: newProduct.type || 'ITEM',
+      // Maintain flags if editing
+      isFlashSale: editingProductId ? products.find(p=>p.id===editingProductId)?.isFlashSale : false,
+      isBoosted: editingProductId ? products.find(p=>p.id===editingProductId)?.isBoosted : false
     };
+    
     await StorageService.saveProduct(product);
+    
     setNewProduct({ type: 'ITEM' });
-    addToast("Produk berhasil ditambahkan!", "success");
+    setEditingProductId(null);
+    addToast(editingProductId ? "Produk berhasil diupdate!" : "Produk berhasil ditambahkan!", "success");
     refreshData();
+  };
+
+  const handleEditProduct = (product: Product) => {
+      setNewProduct(product);
+      setEditingProductId(product.id);
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to form
+  };
+
+  const handleCancelEdit = () => {
+      setNewProduct({ type: 'ITEM' });
+      setEditingProductId(null);
   };
 
   const handleDeleteProduct = async (e: React.MouseEvent, id: string) => {
@@ -428,6 +445,9 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
   const estimatedSizeKB = totalDocs * 2;
   const totalQuotaKB = 1024 * 1024;
   const usagePercent = Math.min(100, (estimatedSizeKB / totalQuotaKB) * 100);
+  
+  // Calculate Image Count (Approximation based on non-default strings)
+  const imageCount = allProducts.filter(p => p.image && !p.image.includes('picsum')).length + members.filter(u => u.avatar && !u.avatar.includes('picsum')).length;
 
   return (
     <div className="flex h-screen overflow-hidden bg-dark-bg">
@@ -528,11 +548,141 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                            <DbStatRow label="Active Sellers" count={sellers.length} icon={Store}/>
                            <DbStatRow label="Total Products" count={allProducts.length} icon={Package}/>
                            <DbStatRow label="Transaction Records" count={orders.length} icon={ShoppingCart}/>
+                           <DbStatRow label="Uploaded Media" count={imageCount} icon={ImageIcon}/>
                            <DbStatRow label="Activity Logs" count={logs.length} icon={FileText}/>
                            <DbStatRow label="Active Coupons" count={coupons.length} icon={Ticket}/>
                            <DbStatRow label="Reports" count={reports.length} icon={Flag}/>
                            <DbStatRow label="Feedbacks" count={feedbacks.length} icon={MessageSquare}/>
                       </div>
+                  </div>
+              </div>
+          )}
+
+          {/* TAB: ORDERS - RESTORED */}
+          {activeTab === 'orders' && (
+              <div className="animate-fade-in space-y-6">
+                  <h1 className="text-2xl font-bold text-white mb-6">Manajemen Pesanan</h1>
+                  {orders.length === 0 ? (
+                      <div className="text-center py-20 text-gray-500 bg-dark-card rounded-3xl border border-white/5">
+                          Belum ada pesanan masuk.
+                      </div>
+                  ) : (
+                      <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
+                          <div className="overflow-x-auto">
+                              <table className="w-full text-left">
+                                  <thead className="bg-white/5 border-b border-white/5">
+                                      <tr>
+                                          <th className="p-4 text-xs font-bold text-gray-400 uppercase">ID</th>
+                                          <th className="p-4 text-xs font-bold text-gray-400 uppercase">User</th>
+                                          <th className="p-4 text-xs font-bold text-gray-400 uppercase">Produk</th>
+                                          <th className="p-4 text-xs font-bold text-gray-400 uppercase">Harga</th>
+                                          <th className="p-4 text-xs font-bold text-gray-400 uppercase">Status</th>
+                                          <th className="p-4 text-xs font-bold text-gray-400 uppercase">Bukti</th>
+                                          <th className="p-4 text-xs font-bold text-gray-400 uppercase">Aksi</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-white/5">
+                                      {orders.map(order => (
+                                          <tr key={order.id} className="hover:bg-white/5 transition-colors">
+                                              <td className="p-4 text-xs font-mono text-gray-500">#{order.id.slice(-6)}</td>
+                                              <td className="p-4">
+                                                  <div className="font-bold text-white text-sm">{order.username}</div>
+                                                  <div className="text-[10px] text-gray-500">{order.whatsapp}</div>
+                                              </td>
+                                              <td className="p-4">
+                                                  <div className="text-white text-sm font-bold">{order.productName}</div>
+                                                  <div className="text-[10px] text-gray-500">{order.gameData ? Object.values(order.gameData).join(', ') : '-'}</div>
+                                              </td>
+                                              <td className="p-4 text-brand-400 font-bold text-sm">Rp {order.price.toLocaleString()}</td>
+                                              <td className="p-4">
+                                                  <span className={`px-2 py-1 rounded text-[10px] font-bold ${
+                                                      order.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                      order.status === 'PROCESSED' ? 'bg-blue-500/20 text-blue-500' :
+                                                      order.status === 'COMPLETED' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
+                                                  }`}>{order.status}</span>
+                                              </td>
+                                              <td className="p-4">
+                                                  {order.paymentProof ? (
+                                                      <a href={order.paymentProof} target="_blank" className="text-blue-400 text-xs hover:underline flex items-center gap-1"><ImageIcon size={12}/> Lihat</a>
+                                                  ) : <span className="text-gray-600 text-xs">-</span>}
+                                              </td>
+                                              <td className="p-4">
+                                                  <select 
+                                                      className="bg-black/30 border border-white/10 rounded text-xs text-white p-1 outline-none"
+                                                      value={order.status}
+                                                      onChange={(e) => handleOrderStatus(order.id, e.target.value as OrderStatus)}
+                                                  >
+                                                      <option value="PENDING">PENDING</option>
+                                                      <option value="PROCESSED">PROCESSED</option>
+                                                      <option value="COMPLETED">COMPLETED</option>
+                                                      <option value="CANCELLED">CANCELLED</option>
+                                                  </select>
+                                              </td>
+                                          </tr>
+                                      ))}
+                                  </tbody>
+                              </table>
+                          </div>
+                      </div>
+                  )}
+              </div>
+          )}
+
+          {/* TAB: MEMBERS - RESTORED */}
+          {activeTab === 'members' && (
+              <div className="animate-fade-in space-y-6">
+                  <div className="flex justify-between items-center mb-6">
+                      <h1 className="text-2xl font-bold text-white">Daftar Member ({members.length})</h1>
+                      <div className="flex gap-2">
+                          <input 
+                              placeholder="Cari member (UID/Username)" 
+                              className="bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white text-sm outline-none focus:border-brand-500"
+                              onChange={(e) => {
+                                  // Simple local filter logic could go here, or handled via state
+                              }}
+                          />
+                      </div>
+                  </div>
+
+                  {/* Manual Points Tool */}
+                  <div className="bg-dark-card border border-white/5 rounded-2xl p-6 mb-8 flex flex-col md:flex-row gap-4 items-center">
+                      <h3 className="font-bold text-white whitespace-nowrap mr-4"><Coins className="inline mr-2 text-yellow-500"/> Kelola Poin Manual</h3>
+                      <input placeholder="UID Member" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-sm flex-1 w-full" value={pointUid} onChange={e=>setPointUid(e.target.value)}/>
+                      <input type="number" placeholder="Jumlah Poin" className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white text-sm w-32" value={pointAmount} onChange={e=>setPointAmount(e.target.value)}/>
+                      <div className="flex gap-2">
+                          <button onClick={() => handleManagePointsByUID('ADD')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-bold">Tambah</button>
+                          <button onClick={() => handleManagePointsByUID('SUBTRACT')} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-bold">Kurang</button>
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {members.map(member => (
+                          <div key={member.id} className="bg-dark-card border border-white/5 rounded-2xl p-4 flex items-center gap-4 hover:border-brand-500/30 transition-all">
+                              <img src={member.avatar || "https://picsum.photos/50"} className="w-12 h-12 rounded-full object-cover bg-white/5"/>
+                              <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                      <h4 className="font-bold text-white text-sm truncate">{member.username}</h4>
+                                      {member.isVip && <Crown size={12} className="text-yellow-500 fill-current"/>}
+                                  </div>
+                                  <p className="text-xs text-gray-500 font-mono" onClick={() => copyToClipboard(member.id)} title="Klik untuk salin UID">UID: {member.id}</p>
+                                  <div className="flex gap-2 mt-1">
+                                      <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-1.5 rounded">{member.points} Poin</span>
+                                      <span className="text-[10px] bg-blue-500/10 text-blue-500 px-1.5 rounded">{member.totalOrders} Order</span>
+                                  </div>
+                              </div>
+                              <div className="flex gap-1">
+                                  <button onClick={(e) => handleUserAction(e, member.id, 'verify')} className={`p-2 rounded-lg transition-colors ${member.isVerified ? 'text-green-500 bg-green-500/10' : 'text-gray-500 bg-white/5 hover:bg-white/10'}`} title="Toggle Verified">
+                                      <BadgeCheck size={16}/>
+                                  </button>
+                                  <button onClick={(e) => handleUserAction(e, member.id, 'ban')} className={`p-2 rounded-lg transition-colors ${member.isBanned ? 'text-red-500 bg-red-500/10' : 'text-gray-500 bg-white/5 hover:bg-white/10'}`} title="Ban/Unban">
+                                      <Ban size={16}/>
+                                  </button>
+                                  <button onClick={(e) => handleUserAction(e, member.id, 'delete')} className="p-2 text-gray-500 hover:text-red-500 bg-white/5 hover:bg-red-500/10 rounded-lg transition-colors" title="Delete User">
+                                      <Trash2 size={16}/>
+                                  </button>
+                              </div>
+                          </div>
+                      ))}
                   </div>
               </div>
           )}
@@ -570,7 +720,7 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                 />
                             </div>
                             <p className="text-xs text-gray-500 mt-4 text-center">
-                                *Sistem akan otomatis merubah tema visual website dari "Phoenix" ke "Ramadhan" pada tanggal 1 Februari 2026.
+                                *Sistem akan otomatis merubah tema visual website dari "Midnight Aurora" ke "Ramadhan" pada tanggal 1 Februari 2026.
                             </p>
                         </div>
 
@@ -630,124 +780,16 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
             </div>
           )}
           
-          {/* ... (Existing code for orders, members, products, stores, coupons, feedback, reports, logs) ... */}
-          {activeTab === 'orders' && (
-              <div className="animate-fade-in space-y-6">
-                  <div className="bg-dark-card border border-white/5 rounded-3xl p-6">
-                      <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><ShoppingCart size={24}/> Daftar Pesanan Masuk</h3>
-                      {orders.length === 0 ? (
-                          <div className="text-center py-12 text-gray-500 border border-dashed border-white/5 rounded-2xl">Belum ada pesanan masuk.</div>
-                      ) : (
-                          <div className="space-y-4">
-                              {orders.map(order => (
-                                  <div key={order.id} className="bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-all">
-                                      <div className="flex flex-col md:flex-row justify-between gap-4">
-                                          <div>
-                                              <div className="flex items-center gap-2 mb-2">
-                                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                      order.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-500' :
-                                                      order.status === 'COMPLETED' ? 'bg-green-500/20 text-green-500' :
-                                                      'bg-blue-500/20 text-blue-500'
-                                                  }`}>{order.status}</span>
-                                                  <span className="text-xs text-gray-400">#{order.id}</span>
-                                                  <span className="text-xs text-gray-400">• {new Date(order.createdAt).toLocaleString()}</span>
-                                              </div>
-                                              <h4 className="font-bold text-white text-lg">{order.productName}</h4>
-                                              <p className="text-sm text-gray-400">Buyer: <span className="text-brand-400 font-bold">{order.username}</span> ({order.whatsapp})</p>
-                                              <div className="bg-black/30 p-2 rounded mt-2 text-xs font-mono text-gray-300">
-                                                  Data: {JSON.stringify(order.gameData)}
-                                              </div>
-                                          </div>
-                                          <div className="flex flex-col items-end gap-2">
-                                              <p className="text-xl font-bold text-white">Rp {order.price.toLocaleString()}</p>
-                                              <div className="flex gap-2">
-                                                  {order.status === OrderStatus.PENDING && (
-                                                      <>
-                                                          <button onClick={() => handleOrderStatus(order.id, OrderStatus.PROCESSED)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold">Proses</button>
-                                                          <button onClick={() => handleOrderStatus(order.id, OrderStatus.CANCELLED)} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-xs font-bold">Batal</button>
-                                                      </>
-                                                  )}
-                                                  {order.status === OrderStatus.PROCESSED && (
-                                                      <button onClick={() => handleOrderStatus(order.id, OrderStatus.COMPLETED)} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs font-bold">Selesai</button>
-                                                  )}
-                                                  {order.paymentProof && (
-                                                      <a href={order.paymentProof} target="_blank" className="bg-white/10 hover:bg-white/20 text-gray-300 px-3 py-1 rounded text-xs font-bold border border-white/10">Lihat Bukti</a>
-                                                  )}
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </div>
-                              ))}
-                          </div>
-                      )}
-                  </div>
-              </div>
-          )}
-
-          {/* TAB: MEMBERS (FIXED LAYOUT) */}
-          {activeTab === 'members' && (
-              <div className="animate-fade-in space-y-6">
-                  <div className="bg-dark-card border border-white/5 rounded-3xl p-8">
-                      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                          <h3 className="text-2xl font-bold text-white flex items-center gap-3"><Users size={28}/> Daftar Member</h3>
-                          <div className="bg-black/30 p-4 rounded-xl border border-white/5 w-full md:w-auto">
-                              <h4 className="text-xs text-gray-400 font-bold mb-2 uppercase tracking-wider">Kelola Poin Member (By UID)</h4>
-                              <div className="flex gap-2">
-                                  <input 
-                                      placeholder="User ID" 
-                                      className="bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-white text-xs w-32"
-                                      value={pointUid}
-                                      onChange={e => setPointUid(e.target.value)}
-                                  />
-                                  <input 
-                                      type="number" 
-                                      placeholder="Jml" 
-                                      className="bg-dark-bg border border-white/10 rounded-lg px-3 py-2 text-white text-xs w-24"
-                                      value={pointAmount}
-                                      onChange={e => setPointAmount(e.target.value)}
-                                  />
-                                  <button onClick={() => handleManagePointsByUID('ADD')} className="bg-green-600 px-4 py-2 rounded-lg text-xs text-white font-bold hover:bg-green-500">+</button>
-                                  <button onClick={() => handleManagePointsByUID('SUBTRACT')} className="bg-red-600 px-4 py-2 rounded-lg text-xs text-white font-bold hover:bg-red-500">-</button>
-                              </div>
-                          </div>
-                      </div>
-
-                      {/* CHANGED: From Grid to Vertical Stack */}
-                      <div className="space-y-4">
-                          {members.map(member => (
-                              <div key={member.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row items-center gap-5 hover:border-white/10 transition-all">
-                                  <div className="flex items-center gap-4 flex-1 w-full md:w-auto">
-                                      <img src={member.avatar || "https://picsum.photos/50"} className="w-14 h-14 rounded-full object-cover bg-black border-2 border-white/10"/>
-                                      <div className="min-w-0">
-                                          <h4 className="font-bold text-white text-base flex items-center gap-2">
-                                              {member.username}
-                                              {member.isVerified && <BadgeCheck size={16} className="text-green-500"/>}
-                                              {member.vipLevel !== 'NONE' && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/20">{member.vipLevel}</span>}
-                                          </h4>
-                                          <p className="text-xs text-gray-400 mt-1">UID: <span className="font-mono cursor-pointer hover:text-white bg-black/30 px-1 rounded" onClick={() => copyToClipboard(member.id)}>{member.id}</span></p>
-                                          <p className="text-xs text-brand-400 font-bold mt-1">Poin: {member.points}</p>
-                                      </div>
-                                  </div>
-                                  <div className="flex gap-2 self-end md:self-center">
-                                      <button onClick={(e) => handleUserAction(e, member.id, 'verify')} className={`p-2.5 rounded-xl ${member.isVerified ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`} title="Verify"><BadgeCheck size={18}/></button>
-                                      <button onClick={(e) => handleUserAction(e, member.id, 'ban')} className={`p-2.5 rounded-xl ${member.isBanned ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`} title="Ban"><Ban size={18}/></button>
-                                      <button onClick={(e) => handleUserAction(e, member.id, 'delete')} className="p-2.5 bg-white/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white" title="Delete"><Trash2 size={18}/></button>
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-              </div>
-          )}
-
-          {/* ... (Existing TAB Products, Stores, Coupons, Feedback, Reports, Logs) ... */}
+          {/* ... (Existing code for products, stores, coupons, feedback, reports, logs) ... */}
           {/* TAB: PRODUCTS */}
           {activeTab === 'products' && (
               <div className="animate-fade-in flex flex-col xl:flex-row gap-8">
                   {/* FORM INPUT PRODUCT */}
                   <div className="xl:w-1/3 xl:order-2">
                       <div className="bg-dark-card border border-white/5 rounded-3xl p-6 sticky top-4 shadow-xl">
-                          <h3 className="text-xl font-bold text-white mb-4">Input Produk Official</h3>
+                          <h3 className="text-xl font-bold text-white mb-4">
+                              {editingProductId ? 'Edit Produk' : 'Input Produk Official'}
+                          </h3>
                           <div className="space-y-4">
                               <input placeholder="Nama Produk" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={newProduct.name || ''} onChange={e => setNewProduct({...newProduct, name: e.target.value})}/>
                               <div className="grid grid-cols-2 gap-4">
@@ -765,12 +807,23 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                   <input type="file" onChange={handleProductImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" />
                                   <div className="bg-dark-bg border border-white/10 rounded-xl p-3 text-white flex items-center gap-3">
                                       <Upload size={18} className="text-gray-400"/>
-                                      <span className="text-sm text-gray-400 truncate">{newProduct.image ? 'Gambar Terupload' : 'Upload Gambar'}</span>
+                                      <span className="text-sm text-gray-400 truncate">{newProduct.image ? 'Gambar Terupload (Ganti?)' : 'Upload Gambar'}</span>
                                   </div>
                                   {isUploading && <Loader2 className="animate-spin absolute right-4 top-3 text-white"/>}
                               </div>
                               <textarea placeholder="Deskripsi Produk" className="w-full bg-dark-bg border border-white/10 rounded-xl p-3 text-white h-24 focus:border-brand-500 outline-none" value={newProduct.description || ''} onChange={e => setNewProduct({...newProduct, description: e.target.value})}/>
-                              <button onClick={handleAddProduct} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"><Plus className="inline mr-2"/>Simpan Produk</button>
+                              
+                              <div className="flex gap-2">
+                                  {editingProductId && (
+                                      <button onClick={handleCancelEdit} className="bg-white/10 text-white font-bold py-3 px-4 rounded-xl">
+                                          Batal
+                                      </button>
+                                  )}
+                                  <button onClick={handleAddProduct} className="flex-1 bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2">
+                                      <Plus className="inline mr-2"/>
+                                      {editingProductId ? 'Update Produk' : 'Simpan Produk'}
+                                  </button>
+                              </div>
                           </div>
                       </div>
                   </div>
@@ -789,10 +842,15 @@ const Dashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                           {p.isFlashSale && <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold">FLASH SALE</span>}
                                       </div>
                                       <div className="flex flex-col gap-1">
+                                          <div className="flex gap-1">
+                                              <button onClick={() => handleEditProduct(p)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition-all rounded-lg" title="Edit">
+                                                  <Edit2 size={14}/>
+                                              </button>
+                                              <button onClick={(e) => handleDeleteProduct(e, p.id)} className="p-1.5 bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-all rounded-lg z-10"><Trash2 size={14}/></button>
+                                          </div>
                                           <button onClick={() => handleToggleFlashSale(p)} className={`p-1.5 rounded-lg ${p.isFlashSale ? 'bg-yellow-500 text-black' : 'bg-white/5 text-gray-400 hover:bg-yellow-500 hover:text-black'}`} title="Toggle Flash Sale">
                                               <Zap size={14}/>
                                           </button>
-                                          <button onClick={(e) => handleDeleteProduct(e, p.id)} className="p-1.5 bg-white/5 hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-all rounded-lg z-10"><Trash2 size={14}/></button>
                                       </div>
                                   </div>
                               ))}

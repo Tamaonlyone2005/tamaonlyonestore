@@ -32,13 +32,14 @@
     <!-- THEME LOGIC SCRIPT -->
     <script>
       (function() {
+        // REVERT: Back to Date-based logic. Currently Date < 2026, so it will display Aurora (Phoenix key).
         const THEME_SWITCH_DATE = new Date('2026-02-01T00:00:00').getTime();
         const now = Date.now();
         const isRamadanTheme = now >= THEME_SWITCH_DATE;
 
         // Define Color Palettes
         const themes = {
-          // MODIFIED: Phoenix key now holds "Midnight Aurora" values
+          // MIDNIGHT AURORA SEASON (Previously named Phoenix)
           phoenix: {
             brand500: '#06b6d4', // Cyan 500 (Electric Blue/Cyan)
             brand600: '#0891b2', // Cyan 600
@@ -47,11 +48,12 @@
             card: '#0f172a',     // Slate 900 (Slightly Lighter Navy)
             accent: '#8b5cf6'    // Violet 500 (Aurora Purple Accent)
           },
+          // RAMADAN THEME (Future Activation)
           ramadan: {
             brand500: '#10b981', // Emerald 500
             brand600: '#059669', // Emerald 600
             brand900: '#064e3b', // Emerald 900
-            bgDark: '#022c22',   // Deep Green Black
+            bgDark: '#022c22',   // Deep Green Black (Night Prayer Vibe)
             card: '#064e3b',     // Dark Green Card
             accent: '#fbbf24'    // Gold
           }
@@ -104,6 +106,7 @@
             animation: {
               'fade-in': 'fadeIn 0.5s ease-out',
               'slide-up': 'slideUp 0.5s ease-out',
+              'slide-right': 'slideRight 0.3s ease-out',
               'float': 'float 6s ease-in-out infinite',
               'sway': 'sway 3s ease-in-out infinite',
               'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -118,6 +121,10 @@
               slideUp: {
                 '0%': { transform: 'translateY(20px)', opacity: '0' },
                 '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              slideRight: {
+                '0%': { transform: 'translateX(-100%)' },
+                '100%': { transform: 'translateX(0)' },
               },
               float: {
                 '0%, 100%': { transform: 'translateY(0)' },
@@ -159,7 +166,6 @@
         background-color: var(--color-bg-dark);
         color: #f1f5f9;
         font-family: 'Inter', sans-serif;
-        /* Midnight Aurora Gradient Background */
         background-image: linear-gradient(to bottom right, #020617, #0f172a, #1e1b4b);
         background-attachment: fixed;
         min-height: 100vh;

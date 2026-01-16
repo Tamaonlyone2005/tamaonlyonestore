@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, PointHistory, Order, VipLevel, Product, OrderStatus, ActivityLog, MEMBERSHIP_PLANS, MembershipTier } from '../types';
 import { StorageService } from '../services/storageService';
 import { AuthService } from '../services/authService';
 import { useNavigate } from 'react-router-dom';
-import { Save, Lock, User as UserIcon, Shield, Coins, Eye, EyeOff, Share2, BadgeCheck, Crown, Download, Upload, Receipt, Heart, Activity, Image as ImageIcon, Loader2, Store, Trash2, Camera, LogOut, Zap, Check } from 'lucide-react';
+import { Save, Lock, User as UserIcon, Shield, Coins, Eye, EyeOff, Share2, BadgeCheck, Crown, Download, Upload, Receipt, Heart, Activity, Image as ImageIcon, Loader2, Store, Trash2, Camera, LogOut, Zap, Check, Calendar } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import UserAvatar from '../components/UserAvatar';
 import ProductCard from '../components/ProductCard';
@@ -163,6 +162,14 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   const isAdmin = currentUser.role === UserRole.ADMIN;
   
   const isSubscribed = currentUser.subscriptionEndsAt && new Date(currentUser.subscriptionEndsAt) > new Date();
+
+  // Helper for Log Grouping
+  const groupedLogs = myLogs.reduce((acc, log) => {
+      const date = new Date(log.timestamp).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(log);
+      return acc;
+  }, {} as Record<string, ActivityLog[]>);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 mb-20">
@@ -460,18 +467,32 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
               )}
 
               {activeTab === 'activity' && (
-                  <div className="space-y-2 animate-fade-in">
+                  <div className="space-y-6 animate-fade-in">
                        <h2 className="text-2xl font-bold text-white mb-6">Log Aktivitas</h2>
-                       <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden">
+                       <div className="bg-dark-card border border-white/5 rounded-3xl overflow-hidden p-4">
                            {myLogs.length === 0 ? (
                                <div className="text-center py-12 text-gray-500"><Activity size={48} className="mx-auto mb-4 opacity-20" /><p>Belum ada aktivitas.</p></div>
                            ) : (
-                               myLogs.map(l => (
-                                   <div key={l.id} className="flex gap-4 p-4 border-b border-white/5 hover:bg-white/5 transition-colors last:border-0">
-                                       <div className="text-gray-500 text-xs min-w-[80px] pt-1">{new Date(l.timestamp).toLocaleDateString()}</div>
-                                       <div>
-                                           <span className="text-brand-400 font-bold text-xs uppercase mr-2">{l.action}</span>
-                                           <span className="text-gray-300 text-sm">{l.details}</span>
+                               // Grouped logs by date
+                               Object.entries(groupedLogs).map(([date, logs]: [string, ActivityLog[]]) => (
+                                   <div key={date} className="mb-6 last:mb-0">
+                                       <div className="flex items-center gap-2 mb-3 bg-white/5 px-3 py-1.5 rounded-lg w-fit">
+                                           <Calendar size={14} className="text-brand-400"/>
+                                           <span className="text-xs font-bold text-brand-100 uppercase tracking-wider">{date}</span>
+                                       </div>
+                                       <div className="space-y-2 border-l-2 border-white/5 pl-4 ml-2">
+                                           {logs.map(l => (
+                                               <div key={l.id} className="relative group">
+                                                   <div className="absolute -left-[21px] top-2 w-2.5 h-2.5 rounded-full bg-dark-card border-2 border-white/10 group-hover:border-brand-500 transition-colors"></div>
+                                                   <div className="flex gap-4 p-3 rounded-xl hover:bg-white/5 transition-colors">
+                                                       <div className="text-gray-500 text-xs font-mono min-w-[60px] pt-0.5">{new Date(l.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                                       <div>
+                                                           <span className="text-brand-400 font-bold text-xs uppercase mr-2 bg-brand-500/10 px-2 py-0.5 rounded">{l.action}</span>
+                                                           <p className="text-gray-300 text-sm mt-1">{l.details}</p>
+                                                       </div>
+                                                   </div>
+                                               </div>
+                                           ))}
                                        </div>
                                    </div>
                                ))

@@ -63,7 +63,7 @@ const Home: React.FC = () => {
                       <div className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20">
                           {isRamadanTheme ? <Moon size={14} className="text-gold-400 fill-current"/> : <Sparkles size={14} className="text-brand-400 fill-current"/>}
                           <span className="text-brand-400 text-xs font-bold tracking-wide uppercase">
-                              {isRamadanTheme ? "Ramadhan 1447 H" : "Midnight Aurora Season"}
+                              {isRamadanTheme ? "Ramadhan 1447 H" : "Digital Product Online Store"}
                           </span>
                       </div>
                       
@@ -94,23 +94,8 @@ const Home: React.FC = () => {
                       </div>
                   </div>
 
-                  {/* Hero Cards Visual - Dynamic Colors */}
+                  {/* Hero Cards Visual - Removed floating elements */}
                   <div className="hidden md:flex relative gap-6 pr-10 animate-fade-in">
-                      {/* Decoration Float */}
-                      <div className="absolute -top-10 left-10 animate-float opacity-80" style={{ animationDelay: '1s' }}>
-                          {isRamadanTheme ? (
-                              <div className="text-gold-500">
-                                  <div className="w-1 h-20 bg-gold-600 mx-auto"></div>
-                                  <div className="w-8 h-10 bg-gold-400 rounded-lg shadow-lg shadow-gold-400/50"></div>
-                              </div>
-                          ) : (
-                              <div className="relative">
-                                  <Sparkles size={48} className="text-brand-400 fill-brand-400 drop-shadow-lg animate-pulse"/>
-                                  <div className="absolute inset-0 bg-brand-400 blur-xl opacity-30"></div>
-                              </div>
-                          )}
-                      </div>
-
                       <div className={`w-48 h-64 bg-gradient-to-br ${isRamadanTheme ? 'from-brand-700 to-brand-900' : 'from-cyan-900 to-blue-900'} rounded-3xl shadow-2xl transform -rotate-6 hover:rotate-0 transition-all duration-500 flex flex-col items-center justify-center border border-white/10 p-4 relative overflow-hidden group`}>
                           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-10"></div>
                           {/* Inner Glow */}
@@ -138,7 +123,7 @@ const Home: React.FC = () => {
               </div>
           </div>
           
-          {/* Decorative Background Elements */}
+          {/* Decorative Background Elements - Kept Blobs for Midnight Theme, Removed Sparkles */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-600/10 rounded-full blur-[120px] pointer-events-none"></div>
           <div className={`absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full blur-[100px] pointer-events-none ${isRamadanTheme ? 'bg-gold-600/10' : 'bg-purple-600/10'}`}></div>
       </div>
